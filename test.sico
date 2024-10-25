@@ -1,0 +1,30 @@
+#include "test2.sico"
+
+#define NL 10
+#define EXIT -1
+#define PUTC -2
+
+
+            jump(start)
+
+
+t0: 0
+
+
+start:
+            givz() givz() >
+            jump(start)
+
+
+#macro givz() {
+    0
+}
+
+
+#macro jump(x) {
+    t0 t0 x
+}
+
+#macro clear(x) {
+    x x >
+}

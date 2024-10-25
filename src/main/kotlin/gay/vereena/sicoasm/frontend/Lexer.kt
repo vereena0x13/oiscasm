@@ -1,0 +1,307 @@
+package gay.vereena.sicoasm.frontend
+
+import gay.vereena.sicoasm.WorkerScope
+import gay.vereena.sicoasm.reportFatal
+import gay.vereena.sicoasm.util.*
+import gay.vereena.sicoasm.util.escape
+import kotlin.math.min
+import kotlin.math.max
+
+// TODO: comments
+
+enum class TokenType {
+    LBRACE,                 // {
+    RBRACE,                 // }
+    LBRACK,                 // [
+    RBRACK,                 // ]
+    LPAREN,                 // (
+    RPAREN,                 // )
+
+    COMMA,                  // ,
+    COLON,                  // :
+
+    SUB,                    // -
+    ADD,                    // +
+    MUL,                    // *
+    DIV,                    // /
+
+    POS,                    // ?
+    NEXT,                   // >
+
+    STRING,                 // "..."
+    INT,                    // [0-9]*
+    IDENT,                  // ident
+    POUND_IDENT,            // #ident
+}
+
+data class Span(val start: Int, val end: Int = start) {
+    init {
+        if (start > end) throw IllegalArgumentException("Span start must be <= end; got [$start,$end]")
+    }
+
+    infix fun union(other: Span) = Span(min(start, other.start), max(end, other.end))
+
+    infix fun overlaps(other: Span) = other.start in range || other.end in range
+
+    val range = start..end
+
+    override fun toString() = "[$start,$end]"
+}
+
+data class Token(val lexer: Lexer, val index: Int, val type: TokenType, val value: String, val line: Int, val col: Int, val span: Span)
+
+class LexException(msg: String) : Exception(msg)
+
+class Lexer(private val scope: WorkerScope, private val file: String, private val source: String) {
+    private fun isLetter(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z')
+    private fun isDigit(c: Char): Boolean = c in '0'..'9'
+    private fun isIdent(c: Char): Boolean = isLetter(c) || isDigit(c) || c == '_'
+
+    private var start: Int = 0
+    private var pos: Int = 0
+    private var line: Int = 1
+    private var col: Int = 1
+    private var tokens = mutableListOf<Token>()
+    private var tokenIndex: Int = 0
+    private val index2Line = mutableMapOf<Int, Int>() // TODO: interval map! (Segment Tree?)
+
+    init {
+        var line = 1
+        source.indices.forEach { i ->
+            if (source[i] == '\n') {
+                line++
+            }
+            index2Line[i] = line
+        }
+    }
+
+    private fun more() = pos < source.length
+
+    private fun peek(): Char = source[pos]
+
+    private fun next(): Char {
+        val c = peek()
+        pos++
+        col++
+        return c
+    }
+
+    private fun current(): String = source.substring(start, pos)
+
+    private fun accept(vararg valid: Char): Boolean {
+        for (c in valid) {
+            if (peek() == c) {
+                next()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun acceptSeq(seq: String): Boolean {
+        val pos = pos
+        val col = col
+        for (i in seq.indices) {
+            if (next() != seq[i]) {
+                this.pos = pos
+                this.col = col
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun emit(type: TokenType, str: String? = null, col: Int = 0, span: Span? = null) {
+        val s = str ?: current()
+        val sp = span ?: span()
+        tokens.add(Token(this, tokenIndex++, type, s, line, if (col == 0) this.col - s.length else col, sp))
+        start = pos
+    }
+
+    private fun ignore() {
+        start = pos
+    }
+
+    private fun unexpected(c: String) {
+        scope.reportFatal(
+            formatError(
+                "Unexpected: '${escape(c)}'",
+                Token(this, -1, TokenType.IDENT, c, line, col - 1, Span(pos - 1)) // TODO
+            ),
+            true
+        )
+    }
+
+    private fun skipWhitespace() {
+        var r = true
+        while (more() && r) {
+            when (peek()) {
+                '\n' -> {
+                    line++
+                    col = 0
+                    next()
+                }
+                ' ', '\t', '\r' -> {
+                    next()
+                }
+                else -> {
+                    r = false
+                }
+            }
+        }
+        ignore()
+    }
+
+    private fun scanIdent() {
+        while (more() && isIdent(peek())) next()
+    }
+
+    fun tokenize(): List<Token> {
+        while (more()) {
+            skipWhitespace()
+
+            if (!more()) break
+
+            when (val c = next()) {
+                '{' -> emit(TokenType.LBRACE)
+                '}' -> emit(TokenType.RBRACE)
+                '[' -> emit(TokenType.LBRACK)
+                ']' -> emit(TokenType.RBRACK)
+                '(' -> emit(TokenType.LPAREN)
+                ')' -> emit(TokenType.RPAREN)
+
+                ',' -> emit(TokenType.COMMA)
+                ':' -> emit(TokenType.COLON)
+
+                '+' -> emit(TokenType.ADD)
+                '-' -> emit(TokenType.SUB)
+                '*' -> emit(TokenType.MUL)
+                '/' -> emit(TokenType.DIV)
+
+                '?' -> emit(TokenType.POS)
+                '>' -> emit(TokenType.NEXT)
+
+                '#' -> {
+                    if(more() && isIdent(peek())) {
+                        scanIdent()
+                        emit(TokenType.POUND_IDENT, str = current().substring(1))
+                    } else {
+                        unexpected(c.toString())
+                    }
+                }
+
+                '"' -> {
+                    val start = pos
+                    val col = col
+
+                    while (more() && peek() != '"' && peek() != '\n') {
+                        next()
+                        // TODO: escape sequences
+                    }
+
+                    if (!accept('"')) {
+                        throw LexException("Unclosed string")
+                    }
+
+                    val end = pos - 1
+                    emit(TokenType.STRING, source.substring(start, end), col, Span(start, end - 1))
+                }
+
+                else -> {
+                    if (isLetter(c) || c == '_') {
+                        scanIdent()
+                        emit(TokenType.IDENT)
+                    } else if (isDigit(c)) {
+                        while (more() && isDigit(peek())) next()
+                        emit(TokenType.INT)
+                    } else {
+                        unexpected(c.toString())
+                    }
+                }
+            }
+        }
+
+        return this.tokens
+    }
+
+    fun indexToLine(index: Int) = index2Line[index]
+
+    fun span() = Span(start, if (pos == start) pos else pos - 1)
+
+    fun getInSpan(span: Span) = source.substring(span.start, span.end)
+
+    fun getLine(index: Int): String {
+        assert(source[index] != '\n')
+
+        val start = {
+            var i = index
+            while (true) {
+                if (i == 0 || source[i - 1] == '\n') {
+                    break
+                }
+                i--
+            }
+            i
+        }()
+
+        val end = {
+            var i = index
+            while (true) {
+                if (i + 1 >= source.length || source[i + 1] == '\n') {
+                    break
+                }
+                i++
+            }
+            i
+        }()
+
+        return source.substring(start, end + 1)
+    }
+
+    fun getLinesInSpan(span: Span): List<String> {
+        assert(span.end < source.length)
+
+        val result = mutableListOf<String>()
+
+        var last = 0
+        (span.start..span.end).forEach { i ->
+            if (source[i] != '\n') {
+                val curr = indexToLine(i)!!
+                if (last != curr) {
+                    val line = getLine(i)
+                    result += line
+                    last = curr
+                }
+            }
+        }
+
+        return result
+    }
+
+    fun formatError(error: String, vararg ts: Token): String {
+        ts.sortBy { it.index }
+        assert(ts.isNotEmpty())
+        val result = StringBuilder()
+        val theSpan = ts.map { it.span }.reduce { acc, it -> it.union(acc) }
+        val lines = getLinesInSpan(theSpan)
+        val rawlinenos = ts.flatMap { (it.span.start..it.span.end).map { i -> indexToLine(i)!! } }.distinct()
+        assert(lines.size == rawlinenos.size)
+        assert(lines.isNotEmpty())
+        result.append("${boldRed("error:")} $error\n")
+        result.append("   ${boldBlue("-->")} $file\n")
+        result.append("    ${boldBlue("|")}\n")
+        lines.zip(rawlinenos).forEach { (line, rawlineno) ->
+            val lineno = rawlineno.toString().padStart(3, ' ')
+            result.append("${boldBlue("$lineno |")} $line\n")
+        }
+        result.append("    ${boldBlue("|")}")
+        if (ts.size == 1) {
+            val col = ts.fold(ts[0].col) { acc, it -> min(acc, it.col) }
+            repeat(col) { result.append(' ') }
+            val span = ts.fold(ts[0].span) { acc, it -> acc union it.span }
+            result.append(boldRed(span.range.joinToString("") { "^" }))
+        }
+        result.append("\u001b[0m")
+        return result.toString()
+    }
+}
