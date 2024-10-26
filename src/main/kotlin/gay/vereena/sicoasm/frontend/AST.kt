@@ -1,23 +1,23 @@
 package gay.vereena.sicoasm.frontend
 
 
-sealed class Node(vararg val tokens: Token)
+sealed class Node
 
-sealed class ExprST(vararg tokens: Token) : Node(*tokens)
+sealed class ExprST : Node()
 
 
 // Atoms
 
-class IntST(val value: Int, vararg tokens: Token) : ExprST(*tokens)
-class StringST(val value: String, vararg tokens: Token) : ExprST(*tokens)
-class IdentST(val value: String, vararg tokens: Token) : ExprST(*tokens)
-class LabelST(val value: String, vararg tokens: Token) : ExprST(*tokens)
+class IntST(val value: Int) : ExprST()
+class StringST(val value: String) : ExprST()
+class IdentST(val value: String) : ExprST()
+class LabelST(val value: String) : ExprST()
 
 
 enum class UnaryOP {
     NEG
 }
-class UnaryST(val op: UnaryOP, val value: ExprST, vararg tokens: Token) : ExprST(*tokens)
+class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 
 
 enum class BinaryOP {
@@ -26,22 +26,22 @@ enum class BinaryOP {
     MUL,
     DIV
 }
-class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST, vararg tokens: Token) : ExprST(*tokens)
+class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 
 
-class PosST(vararg tokens: Token) : ExprST(*tokens)
-class NextST(vararg tokens: Token) : ExprST(*tokens)
+class PosST(vararg tokens: Token) : ExprST()
+class NextST(vararg tokens: Token) : ExprST()
 
 
 // Root
 
-class IncludeST(val path: String, vararg tokens: Token) : Node(*tokens)
+class IncludeST(val path: String) : Node()
 
-class DefST(val name: String, val value: ExprST, vararg tokens: Token) : Node(*tokens)
+class DefST(val name: String, val value: ExprST) : Node()
 
-class MacroST(val name: String, val params: List<String>, val body: List<Node>, vararg tokens: Token) : Node(*tokens)
+class MacroST(val name: String, val params: List<String>, val body: List<Node>) : Node()
 
-class MacroCallST(val name: String, val args: List<ExprST>, vararg tokens: Token) : ExprST(*tokens) // NOTE: ExprST? :(
+class MacroCallST(val name: String, val args: List<ExprST>) : ExprST() // NOTE: ExprST()? :(
 
 class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>) : Node()
 

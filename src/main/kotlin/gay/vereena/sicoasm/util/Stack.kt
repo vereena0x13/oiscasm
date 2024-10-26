@@ -22,11 +22,10 @@ class Stack<T> {
         return data.removeAt(data.size - 1)
     }
 
-    fun popMaybe(): Maybe<T> = if(data.isEmpty()) None() else Some(pop())
+    //fun popMaybe(): Maybe<T> = if(data.isEmpty()) None() else Some(pop())
+    fun popMaybe(): T? = if(data.isEmpty()) null else pop()
 
-    fun mark() {
-        marks.add(data.size)
-    }
+    fun mark() { marks.add(data.size) }
 
     fun reset(): List<T> {
         if(marks.isEmpty()) throw IllegalStateException("Attempt to reset Stack with no marks")

@@ -1,8 +1,9 @@
-#include "test2.sico"
+include "test2.sico"
 
-#define NL 10
-#define EXIT -1
-#define PUTC -2
+
+define NL 10
+define EXIT -1
+define PUTC -2
 
 
             jump(start)
@@ -16,15 +17,15 @@ start:
             jump(start)
 
 
-#macro givz() {
+macro givz() {
     0
 }
 
 
-#macro jump(x) {
+macro jump(x) {
     t0 t0 x
 }
 
-#macro clear(x) {
+macro clear(x) {
     x x >
 }

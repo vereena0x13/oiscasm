@@ -31,7 +31,6 @@ enum class TokenType {
     STRING,                 // "..."
     INT,                    // [0-9]*
     IDENT,                  // ident
-    POUND_IDENT,            // #ident
 }
 
 data class Span(val start: Int, val end: Int = start) {
@@ -180,15 +179,6 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
                 '?' -> emit(TokenType.POS)
                 '>' -> emit(TokenType.NEXT)
-
-                '#' -> {
-                    if(more() && isIdent(peek())) {
-                        scanIdent()
-                        emit(TokenType.POUND_IDENT, str = current().substring(1))
-                    } else {
-                        unexpected(c.toString())
-                    }
-                }
 
                 '"' -> {
                     val start = pos
