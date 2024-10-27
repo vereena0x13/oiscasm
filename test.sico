@@ -17,10 +17,10 @@ start:
             jump(start)
 
 
+
 macro givz() {
     0
 }
-
 
 macro jump(x) {
     t0 t0 x

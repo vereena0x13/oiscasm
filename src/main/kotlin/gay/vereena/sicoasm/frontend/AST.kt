@@ -4,21 +4,15 @@ package gay.vereena.sicoasm.frontend
 sealed class Node
 
 sealed class ExprST : Node()
-
-
-// Atoms
-
-class IntST(val value: Int) : ExprST()
-class StringST(val value: String) : ExprST()
-class IdentST(val value: String) : ExprST()
-class LabelST(val value: String) : ExprST()
-
+data class IntST(val value: Int) : ExprST()
+data class StringST(val value: String) : ExprST()
+data class IdentST(val value: String) : ExprST()
+data class LabelST(val value: String) : ExprST()
 
 enum class UnaryOP {
     NEG
 }
-class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
-
+data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 
 enum class BinaryOP {
     ADD,
@@ -26,27 +20,19 @@ enum class BinaryOP {
     MUL,
     DIV
 }
-class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
+data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 
+data object PosST : ExprST()
+data object NextST : ExprST()
+data class ParenST(val value: ExprST) : ExprST()
 
-class PosST(vararg tokens: Token) : ExprST()
-class NextST(vararg tokens: Token) : ExprST()
+data class MacroCallST(val name: String, val args: List<ExprST>) : Node()
 
+data class DefineST(val name: String, val value: ExprST) : Node()
+data class MacroST(val name: String, val params: List<String>, val body: List<Node>) : Node()
+data class IncludeST(val path: String) : Node()
+data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>) : Node()
 
-// Root
-
-class IncludeST(val path: String) : Node()
-
-class DefST(val name: String, val value: ExprST) : Node()
-
-class MacroST(val name: String, val params: List<String>, val body: List<Node>) : Node()
-
-class MacroCallST(val name: String, val args: List<ExprST>) : ExprST() // NOTE: ExprST()? :(
-
-class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>) : Node()
-
-
-// AST Printing
 
 fun astToString(n: Node): String {
     val sb = StringBuilder()
@@ -89,8 +75,15 @@ fun astToString(n: Node): String {
             }
             is PosST -> emitln("pos")
             is NextST -> emitln("next")
+            is ParenST -> {
+                emitln("paren:")
+                level++
+                indent()
+                visit(n.value)
+                level--
+            }
             is IncludeST -> emitln("include(" + n.path + ")")
-            is DefST -> {
+            is DefineST -> {
                 emitln("define(${n.name}):")
                 level++
                 indent()

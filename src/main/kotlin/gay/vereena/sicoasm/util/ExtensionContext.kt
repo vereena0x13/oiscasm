@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.exts
+package gay.vereena.sicoasm.util
 
 interface ExtensionContext {
     interface Key<E : Element>
@@ -40,7 +40,8 @@ interface ExtensionContext {
         override fun toString() = "Empty"
     }
 
-    class Combined internal constructor(private val left: ExtensionContext, private val element: Element) : ExtensionContext {
+    class Combined internal constructor(private val left: ExtensionContext, private val element: Element) :
+        ExtensionContext {
         override fun <E : Element> get(key: Key<E>): E? {
             var cur = this
             while (true) {

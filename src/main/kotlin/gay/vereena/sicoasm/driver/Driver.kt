@@ -1,60 +1,18 @@
-package gay.vereena.sicoasm
+package gay.vereena.sicoasm.driver
 
 import kotlinx.coroutines.*
-import gay.vereena.sicoasm.exts.*
-import gay.vereena.sicoasm.util.boldRed
-import gay.vereena.sicoasm.util.eprintln
-import java.nio.file.Paths
 import kotlin.system.exitProcess
+
+import gay.vereena.sicoasm.*
+import gay.vereena.sicoasm.util.*
+
 
 enum class WaitType {
 }
 
-//
 
-@DslMarker
-annotation class WorkerDslMarker
-
-@WorkerDslMarker
-interface WorkerScope {
-    val extensions: ExtensionContext
-}
-
-typealias WorkerResult = Unit
-typealias Worker = suspend () -> WorkerResult
-typealias WorkerConstructor = ((ExtensionContext) -> WorkerScope) -> Pair<WorkerScope, Worker>
-
-@WorkerDslMarker
-fun worker(
-    extensions: ExtensionContext = ExtensionContext.Empty,
-    block: suspend WorkerScope.() -> WorkerResult
-): WorkerConstructor = { fn ->
-    fn(extensions).let { Pair(it) { it.block() } }
-}
-
-private typealias WorkerContinuation = CancellableContinuation<WorkerResult>
-
-//
-
-class WorkerName(wname: String) : ExtensionContext.AbstractElement(Key) {
-    companion object Key : ExtensionContext.IKey<WorkerName> {
-        private val counts = mutableMapOf<String, Int>()
-
-        private fun uniq(s: String) = when (val n = counts[s]) {
-            null -> {
-                counts[s] = 1
-                "$s/0"
-            }
-            else -> {
-                counts[s] = n + 1
-                "$s/$n"
-            }
-        }
-    }
-
-    val name = uniq(wname)
-
-    override fun toString() = "WorkerName($name)"
+class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
+    companion object Key : ExtensionContext.IKey<WithDriver>
 }
 
 suspend fun WorkerScope.waitOn(value: Any, waitType: WaitType, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
@@ -74,8 +32,6 @@ suspend fun WorkerScope.waitOn(value: Any, waitType: WaitType, orElse: (() -> Un
 
 fun WorkerScope.notifyOf(value: Any, waitType: WaitType) = withExt(WithDriver) { driver.notifyOf(value, waitType) }
 
-val WorkerScope.workerName get() = extensions[WorkerName]?.name ?: "<unknown>"
-
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) {
     driver.errorReported()
     TERMINAL.println(e)
@@ -88,18 +44,8 @@ fun <T> WorkerScope.reportFatal(e: T, stop: Boolean = false): Nothing = withExt(
     throw WorkerTerminated(stop)
 }
 
-//
-
-inline fun <T, E: ExtensionContext.AbstractElement> WorkerScope.with(key: ExtensionContext.IKey<E>, block: (E) -> T): T = extensions.with(key, block)
-inline fun <T, E: ExtensionContext.AbstractElement> WorkerScope.withExt(key: ExtensionContext.IKey<E>, block: E.() -> T): T = with(key) { it.block() }
-
-class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
-    companion object Key : ExtensionContext.IKey<WithDriver>
-}
-
 fun WorkerScope.enqueueWorker(worker: WorkerConstructor) = withExt(WithDriver) { driver.enqueueWorker(worker) }
 
-data class WorkerTerminated(val stop: Boolean) : CancellationException("worker terminated")
 
 class Driver {
     private enum class State {
@@ -116,7 +62,6 @@ class Driver {
 
     private data class WaitKey(val value: Any, val waitType: WaitType)
 
-    private val workingDirectory = Paths.get(".").toAbsolutePath().normalize().toString()
     private val blocked = mutableMapOf<WaitKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
     private val startQueue = ArrayDeque<WorkerConstructor>()
     private val runQueue = ArrayDeque<WorkerContinuation>()
@@ -147,13 +92,9 @@ class Driver {
         blocked.remove(key)
     }
 
-    fun enqueueWorker(worker: WorkerConstructor) {
-        startQueue.addLast(worker)
-    }
+    fun enqueueWorker(worker: WorkerConstructor) { startQueue.addLast(worker) }
 
-    fun errorReported() {
-        errors++
-    }
+    fun errorReported() { errors++ }
 
     fun run(): Boolean {
         val driver = this
@@ -168,8 +109,7 @@ class Driver {
                     startQueue.isNotEmpty() -> {
                         val ctor = startQueue.removeFirst()
                         val (scope, worker) = ctor(::makeWorkerScope)
-                        val workerName = scope.extensions[WorkerName]?.name ?: "anon"
-                        val job = launch(CoroutineName("co_$workerName"), CoroutineStart.LAZY) {
+                        val job = launch(CoroutineName("co_${scope.workerName}"), CoroutineStart.LAZY) {
                             supervisorScope {
                                 worker()
                             }
@@ -180,6 +120,7 @@ class Driver {
                                     state = State.STOPPED
                                 }
                             } else {
+                                // TODO: can we generalize this? i.e. WithWorkerCompletion?
                                 val group = scope.extensions[WithWorkerGroup.Key]
                                 if (group != null) {
                                     group.completed++
@@ -198,9 +139,7 @@ class Driver {
                     }
                     runQueue.isNotEmpty() -> {
                         val cont = runQueue.removeFirst()
-                        cont.resume(Unit) { _, _, _ ->
-                            // TODO?
-                        }
+                        cont.resume(Unit) { _, _, _ -> TODO() }
                     }
                     else -> {
                         yield() // TODO: understand how this is helping us; it clearly is, but.. ???
@@ -212,9 +151,7 @@ class Driver {
 
             for (f in blocked) {
                 val (_, g) = f
-                g.forEach {
-                    it.second.invoke()
-                }
+                g.forEach { it.second.invoke() }
             }
 
             if (state != State.STOPPED) {
@@ -231,7 +168,7 @@ class Driver {
 
         val workersBlocked = blocked
             .map { it.value.size }
-            .fold(0) { a, b -> a + b }
+            .reduce { x, y -> x + y }
 
         return when {
             workersBlocked > 0 -> {
@@ -242,7 +179,6 @@ class Driver {
             errors > 0 -> false
             else -> {
                 TERMINAL.println("Finished in $duration ms!")
-                //TERMINAL.println("  Files: ${files.size}")
                 TERMINAL.println("  Jobs: $retired")
                 TERMINAL.println("  Iterations: $iterations")
                 TERMINAL.println("  Waits: $waits")

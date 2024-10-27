@@ -1,13 +1,15 @@
 package gay.vereena.sicoasm.frontend
 
-import gay.vereena.sicoasm.WorkerScope
-import gay.vereena.sicoasm.reportFatal
-import gay.vereena.sicoasm.util.*
-import gay.vereena.sicoasm.util.escape
 import kotlin.math.min
 import kotlin.math.max
 
-// TODO: comments
+import gay.vereena.sicoasm.driver.WorkerScope
+import gay.vereena.sicoasm.driver.reportFatal
+import gay.vereena.sicoasm.util.*
+import gay.vereena.sicoasm.util.escape
+
+import gay.vereena.sicoasm.frontend.TokenType.*
+
 
 enum class TokenType {
     LBRACE,                 // {
@@ -31,7 +33,9 @@ enum class TokenType {
     STRING,                 // "..."
     INT,                    // [0-9]*
     IDENT,                  // ident
+    LABEL,                  // ident:
 }
+
 
 data class Span(val start: Int, val end: Int = start) {
     init {
@@ -47,9 +51,12 @@ data class Span(val start: Int, val end: Int = start) {
     override fun toString() = "[$start,$end]"
 }
 
+
 data class Token(val lexer: Lexer, val index: Int, val type: TokenType, val value: String, val line: Int, val col: Int, val span: Span)
 
+
 class LexException(msg: String) : Exception(msg)
+
 
 class Lexer(private val scope: WorkerScope, private val file: String, private val source: String) {
     private fun isLetter(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z')
@@ -62,14 +69,12 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     private var col: Int = 1
     private var tokens = mutableListOf<Token>()
     private var tokenIndex: Int = 0
-    private val index2Line = mutableMapOf<Int, Int>() // TODO: interval map! (Segment Tree?)
+    private val index2Line = mutableMapOf<Int, Int>() // NOTE TODO: This is kinda dumb...
 
     init {
         var line = 1
         source.indices.forEach { i ->
-            if (source[i] == '\n') {
-                line++
-            }
+            if (source[i] == '\n') line++
             index2Line[i] = line
         }
     }
@@ -117,15 +122,13 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         start = pos
     }
 
-    private fun ignore() {
-        start = pos
-    }
+    private fun ignore() { start = pos }
 
     private fun unexpected(c: String) {
         scope.reportFatal(
             formatError(
                 "Unexpected: '${escape(c)}'",
-                Token(this, -1, TokenType.IDENT, c, line, col - 1, Span(pos - 1)) // TODO
+                Token(this, -1, IDENT, c, line, col - 1, Span(pos - 1)) // TODO
             ),
             true
         )
@@ -140,12 +143,8 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     col = 0
                     next()
                 }
-                ' ', '\t', '\r' -> {
-                    next()
-                }
-                else -> {
-                    r = false
-                }
+                ' ', '\t', '\r' -> next()
+                else -> r = false
             }
         }
         ignore()
@@ -162,23 +161,26 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
             if (!more()) break
 
             when (val c = next()) {
-                '{' -> emit(TokenType.LBRACE)
-                '}' -> emit(TokenType.RBRACE)
-                '[' -> emit(TokenType.LBRACK)
-                ']' -> emit(TokenType.RBRACK)
-                '(' -> emit(TokenType.LPAREN)
-                ')' -> emit(TokenType.RPAREN)
+                '{' -> emit(LBRACE)
+                '}' -> emit(RBRACE)
+                '[' -> emit(LBRACK)
+                ']' -> emit(RBRACK)
+                '(' -> emit(LPAREN)
+                ')' -> emit(RPAREN)
 
-                ',' -> emit(TokenType.COMMA)
-                ':' -> emit(TokenType.COLON)
+                ',' -> emit(COMMA)
+                ':' -> emit(COLON)
 
-                '+' -> emit(TokenType.ADD)
-                '-' -> emit(TokenType.SUB)
-                '*' -> emit(TokenType.MUL)
-                '/' -> emit(TokenType.DIV)
-
-                '?' -> emit(TokenType.POS)
-                '>' -> emit(TokenType.NEXT)
+                '+' -> emit(ADD)
+                '-' -> emit(SUB)
+                '*' -> emit(MUL)
+                '/' -> when {
+                    accept('/') -> TODO()
+                    accept('*') -> TODO()
+                    else -> emit(DIV)
+                }
+                '?' -> emit(POS)
+                '>' -> emit(NEXT)
 
                 '"' -> {
                     val start = pos
@@ -194,16 +196,17 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     }
 
                     val end = pos - 1
-                    emit(TokenType.STRING, source.substring(start, end), col, Span(start, end - 1))
+                    emit(STRING, source.substring(start, end), col, Span(start, end - 1))
                 }
 
                 else -> {
                     if (isLetter(c) || c == '_') {
                         scanIdent()
-                        emit(TokenType.IDENT)
+                        if(accept(':')) emit(LABEL, source.substring(start, pos - 1))
+                        else emit(IDENT)
                     } else if (isDigit(c)) {
                         while (more() && isDigit(peek())) next()
-                        emit(TokenType.INT)
+                        emit(INT)
                     } else {
                         unexpected(c.toString())
                     }
@@ -223,29 +226,19 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     fun getLine(index: Int): String {
         assert(source[index] != '\n')
 
-        val start = {
-            var i = index
-            while (true) {
-                if (i == 0 || source[i - 1] == '\n') {
-                    break
-                }
-                i--
-            }
-            i
-        }()
+        var s = index
+        while (true) {
+            if (s == 0 || source[s - 1] == '\n') break
+            s--
+        }
 
-        val end = {
-            var i = index
-            while (true) {
-                if (i + 1 >= source.length || source[i + 1] == '\n') {
-                    break
-                }
-                i++
-            }
-            i
-        }()
+        var e = index
+        while (true) {
+            if (e + 1 >= source.length || source[e + 1] == '\n') break
+            e++
+        }
 
-        return source.substring(start, end + 1)
+        return source.substring(s, e + 1)
     }
 
     fun getLinesInSpan(span: Span): List<String> {
@@ -272,7 +265,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         ts.sortBy { it.index }
         assert(ts.isNotEmpty())
         val result = StringBuilder()
-        val theSpan = ts.map { it.span }.reduce { acc, it -> it.union(acc) }
+        val theSpan = ts.map { it.span }.reduce { acc, it -> it union acc }
         val lines = getLinesInSpan(theSpan)
         val rawlinenos = ts.flatMap { (it.span.start..it.span.end).map { i -> indexToLine(i)!! } }.distinct()
         assert(lines.size == rawlinenos.size)

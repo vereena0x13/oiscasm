@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.mordant.terminal.Terminal
+import gay.vereena.sicoasm.driver.Driver
 import gay.vereena.sicoasm.frontend.parse
 import java.io.File
 import kotlin.system.exitProcess
@@ -19,19 +20,22 @@ private class CLI : NoOpCliktCommand() {
     override val printHelpOnEmptyArgs = true
 }
 
+
 private class Build : CliktCommand(name = "build") {
     val file: File by argument(name = "FILE", help = "root source file path").file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
 
     override fun run() {
         val driver = Driver()
 
-        driver.enqueueWorker(parse(file.name, file.absolutePath, file.readText()))
+        driver.enqueueWorker(parse(file))
 
         if(!driver.run()) exitProcess(1)
+
 
         // TODO
     }
 }
+
 
 fun main(args: Array<String>) = CLI()
     .subcommands(Build())
