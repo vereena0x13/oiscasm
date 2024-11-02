@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.frontend
+package gay.vereena.sicoasm.front
 
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
@@ -34,7 +34,7 @@ data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
 data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>) : Node()
 data class IncludeST(val path: String) : Node()
-data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
+data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope, val isPrimary: Boolean) : Node()
 
 
 interface ASTVisitor {
@@ -85,7 +85,7 @@ interface ASTVisitor {
     suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
     suspend fun visitMacro(n: MacroST): Node = n
     suspend fun visitInclude(n: IncludeST): Node = n
-    suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
+    suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope, n.isPrimary)
 }
 
 
@@ -198,6 +198,9 @@ fun astToString(n: Node): String {
             is FileST -> {
                 emitln("file:")
                 level++
+                    indent()
+                    emitln("isPrimary: ${n.isPrimary}")
+
                     if(n.includes.isNotEmpty()) {
                         indent()
                         emitln("includes:")

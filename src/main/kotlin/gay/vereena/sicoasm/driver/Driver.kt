@@ -1,15 +1,15 @@
 package gay.vereena.sicoasm.driver
 
-import kotlinx.coroutines.*
 import kotlin.system.exitProcess
+import kotlin.reflect.*
+import kotlinx.coroutines.*
 
 import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.util.*
-import kotlin.reflect.KClass
 
 
-interface WorkUnit {}
-interface Notification {}
+interface WorkUnit
+interface Notification
 
 class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
     companion object Key : ExtensionContext.IKey<WithDriver>

@@ -1,11 +1,12 @@
 package gay.vereena.sicoasm.mid
 
+import gay.vereena.sicoasm.back.assembleTree
 import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.frontend.*
+import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.util.Stack
 
 
-fun expandMacros(ast: FileST) = worker(WorkerName("macro_expansion") + WithScopes(ast.scope)) {
+fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.scope)) {
     val ws = this
     val macroExpander = object : ASTVisitor {
         private var macroArgs = mutableSetOf<String>()
@@ -18,7 +19,7 @@ fun expandMacros(ast: FileST) = worker(WorkerName("macro_expansion") + WithScope
 
         private fun popMacroCall() { macroArgs = macroArgsStack.pop() }
 
-        override suspend fun visitIdent(n: IdentST): ExprST = lookupBinding(n).value as ExprST // TODO
+        override suspend fun visitIdent(n: IdentST): ExprST = lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
             val macro = lookupBinding(n.name).value
@@ -30,9 +31,7 @@ fun expandMacros(ast: FileST) = worker(WorkerName("macro_expansion") + WithScope
                         macroArgs += name
                         scope[name] = visit(value)
                     }
-                    val b = BlockST(macro.body.map { visit(it) })
-                    popMacroCall()
-                    b
+                    BlockST(macro.body.map { visit(it) }).also { popMacroCall() }
                 }
             } else {
                 ws.reportFatal("Attempt to call non-macro value '$macro'", true)
@@ -41,6 +40,5 @@ fun expandMacros(ast: FileST) = worker(WorkerName("macro_expansion") + WithScope
         }
     }
     val expandedAst = macroExpander.visit(ast)
-
-    println(astToString(expandedAst))
+    enqueueWorker(assembleTree(expandedAst as FileST))
 }

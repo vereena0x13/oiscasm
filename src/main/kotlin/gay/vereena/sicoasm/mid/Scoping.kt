@@ -1,7 +1,7 @@
 package gay.vereena.sicoasm.mid
 
 import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.frontend.*
+import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.util.*
 
 
@@ -9,8 +9,6 @@ data class Binding(val value: Node? = null, val export: Boolean = false)
 
 
 class Scope(private val parent: Scope? = null) {
-    val depth: Int = if(parent == null) 0 else parent.depth + 1
-
     private val bindings = mutableMapOf<String, Binding>()
     private val includes: MutableSet<Scope> = if(parent?.includes == null) mutableSetOf() else parent.includes
 
@@ -87,7 +85,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
 
         override suspend fun visitInclude(n: IncludeST): Node = TODO()
 
-        override suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)
+        override suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope, n.isPrimary)
     }
-    enqueueWorker(expandMacros(nameBinder.visit(ast) as FileST))
+    enqueueWorker(expansion(nameBinder.visit(ast) as FileST))
 }

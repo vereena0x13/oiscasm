@@ -14,9 +14,16 @@ t0: 0
 
 start:
             giv(0) giv(NL) >
-            givz() givz() >
+            0 0 ?+1
             jump(start)
 
+            ?
+            (?+1)*2
+
+/*
+3 3 4 0 0 10 7 0 0 9 3 3 4
+3 3 4 0 0 10 7 0 0 3 3 4
+*/
 
 macro giv(x) {
     x

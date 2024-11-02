@@ -1,7 +1,7 @@
-package gay.vereena.sicoasm.frontend
+package gay.vereena.sicoasm.front
 
 import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.frontend.TokenType.*
+import gay.vereena.sicoasm.front.TokenType.*
 import gay.vereena.sicoasm.mid.Scope
 import gay.vereena.sicoasm.mid.bindNames
 import gay.vereena.sicoasm.util.*
@@ -117,6 +117,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         accept(IDENT) -> parseIdent()
         acceptNext(POS) -> PosST
         acceptNext(NEXT) -> NextST
+        acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
         else -> unexpected()
     }
 
@@ -243,7 +244,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
     }
 
-    fun parse(): FileST {
+    fun parse(isPrimary: Boolean): FileST {
         val includes = mutableListOf<IncludeST>()
         val body = mutableListOf<Node>()
         while(more()) {
@@ -254,13 +255,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 else -> body += parse2()
             }
         }
-        return FileST(lexer, includes, body, Scope())
+        return FileST(lexer, includes, body, Scope(), isPrimary)
     }
 }
 
-fun parse(file: File) = worker(WorkerName("parse")) {
+fun parse(file: File, isPrimary: Boolean) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
-    val ast = parser.parse()
+    val ast = parser.parse(isPrimary)
     enqueueWorker(bindNames(ast))
 }

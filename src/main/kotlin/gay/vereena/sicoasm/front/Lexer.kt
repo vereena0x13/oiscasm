@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.frontend
+package gay.vereena.sicoasm.front
 
 import kotlin.math.min
 import kotlin.math.max
@@ -8,7 +8,7 @@ import gay.vereena.sicoasm.driver.reportFatal
 import gay.vereena.sicoasm.util.*
 import gay.vereena.sicoasm.util.escape
 
-import gay.vereena.sicoasm.frontend.TokenType.*
+import gay.vereena.sicoasm.front.TokenType.*
 
 
 enum class TokenType {
@@ -175,8 +175,22 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                 '-' -> emit(SUB)
                 '*' -> emit(MUL)
                 '/' -> when {
-                    accept('/') -> TODO()
-                    accept('*') -> TODO()
+                    accept('/') -> {
+                        while(more() && peek() != '\n') next()
+                        ignore()
+                    }
+                    accept('*') -> {
+                        var depth = 1
+                        while(more() && depth > 0) {
+                            when {
+                                acceptSeq("/*") -> depth++
+                                acceptSeq("*/") -> depth--
+                                else -> if(next() == '\n') line++
+                            }
+                        }
+                        assert(depth == 0)
+                        ignore()
+                    }
                     else -> emit(DIV)
                 }
                 '?' -> emit(POS)

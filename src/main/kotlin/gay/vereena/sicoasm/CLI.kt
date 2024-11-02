@@ -8,7 +8,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.mordant.terminal.Terminal
 import gay.vereena.sicoasm.driver.Driver
-import gay.vereena.sicoasm.frontend.parse
+import gay.vereena.sicoasm.front.parse
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -27,7 +27,7 @@ private class Build : CliktCommand(name = "build") {
     override fun run() {
         val driver = Driver()
 
-        driver.enqueueWorker(parse(file))
+        driver.enqueueWorker(parse(file, true))
 
         if(!driver.run()) exitProcess(1)
 
