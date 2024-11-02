@@ -13,14 +13,20 @@ t0: 0
 
 
 start:
+            giv(0) giv(NL) >
             givz() givz() >
             jump(start)
 
 
+macro giv(x) {
+    x
+}
 
 macro givz() {
-    0
+    giv2(0)
 }
+
+macro giv2(y) { giv(y) }
 
 macro jump(x) {
     t0 t0 x

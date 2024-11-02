@@ -6,8 +6,7 @@ fun <T> eprint(x: T) = System.err.print(x)
 fun <T> eprintln(x: T) = System.err.println(x)
 fun eprintln() = System.err.println()
 
-fun ice(msg: String? = null): Nothing = throw AssertionError("INTERNAL COMPILER ERROR" + if (msg == null) "" else ": $msg")
-fun ice(x: Any?): Nothing = ice(x.toString())
+fun ice(x: Any? = null): Nothing = throw AssertionError("INTERNAL COMPILER ERROR" + if (x == null) "" else ": $x")
 
 fun panic(msg: String? = null): Nothing {
     eprintln("panic: ${msg ?: "???"}")

@@ -5,42 +5,39 @@ import kotlin.system.exitProcess
 
 import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.util.*
+import kotlin.reflect.KClass
 
 
-enum class WaitType {
-}
-
+interface WorkUnit {}
+interface Notification {}
 
 class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
     companion object Key : ExtensionContext.IKey<WithDriver>
 }
 
-suspend fun WorkerScope.waitOn(value: Any, waitType: WaitType, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
+suspend fun WorkerScope.waitOn(value: WorkUnit, notif: KClass<out Notification>, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
     val st = Thread.currentThread().stackTrace.drop(1)
     suspendCancellableCoroutine {
         val roe = {
             if (orElse == null) {
                 val sts = st.joinToString("\n") { x -> "    $x" }
-                reportError("${(boldRed)("error:")} Worker dependency never resolved; waiting on $value for $waitType\n$sts")
+                reportError("${(boldRed)("error:")} Worker dependency never resolved; waiting on $value for $notif\n$sts")
             } else {
                 orElse.invoke()
             }
         }
-        ext.driver.waitOn(value, waitType, it, roe)
+        ext.driver.waitOn(value, notif, it, roe)
     }
 }
 
-fun WorkerScope.notifyOf(value: Any, waitType: WaitType) = withExt(WithDriver) { driver.notifyOf(value, waitType) }
+fun WorkerScope.notifyOf(value: WorkUnit, notif: Notification) = withExt(WithDriver) { driver.notifyOf(value, notif) }
 
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) {
-    driver.errorReported()
-    TERMINAL.println(e)
-    TERMINAL.println()
+    driver.reportError(e)
 }
 
 fun <T> WorkerScope.reportFatal(e: T, stop: Boolean = false): Nothing = withExt(WithDriver) {
     reportError(e)
-    Throwable().printStackTrace()
     throw WorkerTerminated(stop)
 }
 
@@ -56,23 +53,27 @@ class Driver {
 
     private val driverExtension = WithDriver(this)
 
-    private fun makeWorkerScope(extensions: ExtensionContext) = object : WorkerScope {
-        override val extensions = extensions + driverExtension
-    }
-
-    private data class WaitKey(val value: Any, val waitType: WaitType)
+    private data class WaitKey(val value: WorkUnit, val notif: KClass<out Notification>)
 
     private val blocked = mutableMapOf<WaitKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
     private val startQueue = ArrayDeque<WorkerConstructor>()
     private val runQueue = ArrayDeque<WorkerContinuation>()
     private val running = mutableListOf<Job>()
+
+    private val lastNotify = mutableMapOf<WorkUnit, Notification>()
+
     private var errors = 0
     private var waits = 0
     private var notifies = 0
 
-    fun waitOn(value: Any, waitType: WaitType, it: WorkerContinuation, orElse: (() -> Unit)) {
+
+    private fun makeWorkerScope(extensions: ExtensionContext) = object : WorkerScope {
+        override val extensions = extensions + driverExtension
+    }
+
+    fun waitOn(value: WorkUnit, notif: KClass<out Notification>, it: WorkerContinuation, orElse: (() -> Unit)) {
         waits++
-        val key = WaitKey(value, waitType)
+        val key = WaitKey(value, notif)
         val waiters = when (val waiters = blocked[key]) {
             null -> {
                 val ws = mutableListOf<Pair<WorkerContinuation, (() -> Unit)>>()
@@ -84,17 +85,24 @@ class Driver {
         waiters += Pair(it, orElse)
     }
 
-    fun notifyOf(value: Any, waitType: WaitType) {
+    fun notifyOf(value: WorkUnit, notif: Notification) {
+        lastNotify[value] = notif
         notifies++
-        val key = WaitKey(value, waitType)
+        val key = WaitKey(value, notif::class)
         val waiters = blocked[key] ?: return
         waiters.forEach { runQueue.addLast(it.first) }
         blocked.remove(key)
     }
 
+    fun lastNotify(value: Any): Notification = lastNotify[value]!!
+
     fun enqueueWorker(worker: WorkerConstructor) { startQueue.addLast(worker) }
 
-    fun errorReported() { errors++ }
+    fun <T> reportError(e: T) {
+        errors++
+        TERMINAL.println(e)
+        TERMINAL.println()
+    }
 
     fun run(): Boolean {
         val driver = this
@@ -115,10 +123,8 @@ class Driver {
                             }
                         }
                         job.invokeOnCompletion {
-                            if (it != null) {
-                                if (it is WorkerTerminated && it.stop) {
-                                    state = State.STOPPED
-                                }
+                            if (it is WorkerTerminated && it.stop) {
+                                state = State.STOPPED
                             } else {
                                 // TODO: can we generalize this? i.e. WithWorkerCompletion?
                                 val group = scope.extensions[WithWorkerGroup.Key]
@@ -168,12 +174,12 @@ class Driver {
 
         val workersBlocked = blocked
             .map { it.value.size }
-            .reduce { x, y -> x + y }
+            .fold(0) { x, y -> x + y }
 
         return when {
             workersBlocked > 0 -> {
                 val s = if (workersBlocked > 1) "s" else ""
-                eprintln("Terminated with $workersBlocked internal compiler error$s!")
+                eprintln("Terminated with $workersBlocked error$s!")
                 exitProcess(1)
             }
             errors > 0 -> false

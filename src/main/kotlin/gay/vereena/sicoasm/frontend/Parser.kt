@@ -1,10 +1,9 @@
 package gay.vereena.sicoasm.frontend
 
-import gay.vereena.sicoasm.driver.WorkerName
-import gay.vereena.sicoasm.driver.WorkerScope
-import gay.vereena.sicoasm.driver.reportFatal
-import gay.vereena.sicoasm.driver.worker
+import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.frontend.TokenType.*
+import gay.vereena.sicoasm.mid.Scope
+import gay.vereena.sicoasm.mid.bindNames
 import gay.vereena.sicoasm.util.*
 import java.io.File
 
@@ -181,11 +180,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         expectIdentNext("define")
         val name = parseIdent()
         val value = parseExpr()
-        return DefineST(name.value, value)
+        return DefineST(name, value)
     }
 
     private fun parseMacroCall(): MacroCallST {
-        val name = expectNext(IDENT).value
+        val name = parseIdent()
 
         expectNext(LPAREN)
         val args = mutableListOf<ExprST>()
@@ -202,7 +201,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun parseMacro(): MacroST {
         expectIdentNext("macro")
 
-        val name = expectNext(IDENT).value
+        val name = parseIdent()
 
         expectNext(LPAREN)
         val params = mutableListOf<String>()
@@ -255,7 +254,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 else -> body += parse2()
             }
         }
-        return FileST(lexer, includes, body)
+        return FileST(lexer, includes, body, Scope())
     }
 }
 
@@ -263,8 +262,5 @@ fun parse(file: File) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
     val ast = parser.parse()
-
-    println(astToString(ast))
-
-    TODO()
+    enqueueWorker(bindNames(ast))
 }
