@@ -6,15 +6,17 @@ import gay.vereena.sicoasm.mid.*
 import gay.vereena.sicoasm.util.*
 
 
+class TreeAssembled(val code: IntArray) : Notification
+
+
 fun assembleTree(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope)) {
     val asm = Assembler()
     val labels = mutableMapOf<String, Label>()
 
     val labelFinder = object : ASTVisitor {
-        override suspend fun visitLabel(n: LabelST): ExprST {
+        override suspend fun visitLabel(n: LabelST): ExprST = n.also {
             if(labels[n.value] != null) reportFatal("Duplicate label '${n.value}")
             labels[n.value] = asm.label()
-            return n
         }
     }
 
@@ -53,7 +55,8 @@ fun assembleTree(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.sc
         override suspend fun visitMacroCall(n: MacroCallST): Node = ice()
         override suspend fun visitDefine(n: DefineST): Node = ice()
         override suspend fun visitMacro(n: MacroST): Node = ice()
-        override suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope, n.isPrimary
+        override suspend fun visitFile(n: FileST): Node = FileST(
+            n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope
         )
     }
     val finalAst = treeAssembler.visit(labelFinder.visit(ast))
@@ -62,4 +65,5 @@ fun assembleTree(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.sc
 
     val code = asm.assemble()
     println(code.joinToString(" "))
+    notifyOf(ast, TreeAssembled(code))
 }

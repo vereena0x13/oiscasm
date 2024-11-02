@@ -32,6 +32,8 @@ suspend fun WorkerScope.waitOn(value: WorkUnit, notif: KClass<out Notification>,
 
 fun WorkerScope.notifyOf(value: WorkUnit, notif: Notification) = withExt(WithDriver) { driver.notifyOf(value, notif) }
 
+fun WorkerScope.onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) = withExt(WithDriver) { driver.onNotify(notif, it) }
+
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) {
     driver.reportError(e)
 }
@@ -53,14 +55,14 @@ class Driver {
 
     private val driverExtension = WithDriver(this)
 
-    private data class WaitKey(val value: WorkUnit, val notif: KClass<out Notification>)
+    private data class NotificationKey(val value: WorkUnit, val notif: KClass<out Notification>)
 
-    private val blocked = mutableMapOf<WaitKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
+    private val blocked = mutableMapOf<NotificationKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
     private val startQueue = ArrayDeque<WorkerConstructor>()
     private val runQueue = ArrayDeque<WorkerContinuation>()
     private val running = mutableListOf<Job>()
 
-    private val lastNotify = mutableMapOf<WorkUnit, Notification>()
+    private val notificationCallbacks = mutableMapOf<KClass<out Notification>, MutableList<(WorkUnit, Notification) -> Unit>>()
 
     private var errors = 0
     private var waits = 0
@@ -71,9 +73,9 @@ class Driver {
         override val extensions = extensions + driverExtension
     }
 
-    fun waitOn(value: WorkUnit, notif: KClass<out Notification>, it: WorkerContinuation, orElse: (() -> Unit)) {
+    fun waitOn(value: WorkUnit, notif: KClass<out Notification>, it: WorkerContinuation, orElse: () -> Unit) {
         waits++
-        val key = WaitKey(value, notif)
+        val key = NotificationKey(value, notif)
         val waiters = when (val waiters = blocked[key]) {
             null -> {
                 val ws = mutableListOf<Pair<WorkerContinuation, (() -> Unit)>>()
@@ -86,15 +88,17 @@ class Driver {
     }
 
     fun notifyOf(value: WorkUnit, notif: Notification) {
-        lastNotify[value] = notif
-        notifies++
-        val key = WaitKey(value, notif::class)
+        notificationCallbacks[notif::class]?.forEach { it(value, notif) }
+        val key = NotificationKey(value, notif::class)
         val waiters = blocked[key] ?: return
         waiters.forEach { runQueue.addLast(it.first) }
         blocked.remove(key)
     }
 
-    fun lastNotify(value: Any): Notification = lastNotify[value]!!
+    fun onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) {
+        if(notificationCallbacks[notif] == null) notificationCallbacks[notif] = mutableListOf(it)
+        else notificationCallbacks[notif]!! += it
+    }
 
     fun enqueueWorker(worker: WorkerConstructor) { startQueue.addLast(worker) }
 

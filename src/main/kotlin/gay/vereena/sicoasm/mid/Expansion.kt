@@ -8,7 +8,7 @@ import gay.vereena.sicoasm.util.Stack
 
 fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.scope)) {
     val ws = this
-    val macroExpander = object : ASTVisitor {
+    val expander = object : ASTVisitor {
         private var macroArgs = mutableSetOf<String>()
         private val macroArgsStack = Stack<MutableSet<String>>()
 
@@ -39,6 +39,6 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             return if(result.values.size == 1) result.values[0] else result
         }
     }
-    val expandedAst = macroExpander.visit(ast)
+    val expandedAst = expander.visit(ast)
     enqueueWorker(assembleTree(expandedAst as FileST))
 }

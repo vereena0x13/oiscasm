@@ -1,11 +1,12 @@
 package gay.vereena.sicoasm.front
 
-import gay.vereena.sicoasm.driver.*
+import java.io.*
+
 import gay.vereena.sicoasm.front.TokenType.*
-import gay.vereena.sicoasm.mid.Scope
-import gay.vereena.sicoasm.mid.bindNames
+import gay.vereena.sicoasm.mid.*
+import gay.vereena.sicoasm.back.*
+import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.util.*
-import java.io.File
 
 
 class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
@@ -244,7 +245,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
     }
 
-    fun parse(isPrimary: Boolean): FileST {
+    fun parse(): FileST {
         val includes = mutableListOf<IncludeST>()
         val body = mutableListOf<Node>()
         while(more()) {
@@ -255,13 +256,29 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 else -> body += parse2()
             }
         }
-        return FileST(lexer, includes, body, Scope(), isPrimary)
+        return FileST(lexer, includes, body, Scope())
     }
 }
 
-fun parse(file: File, isPrimary: Boolean) = worker(WorkerName("parse")) {
+fun parse(file: File, outFile: File? = null) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
-    val ast = parser.parse(isPrimary)
+    val ast = parser.parse()
+
+    if(outFile != null) {
+        onNotify(TreeAssembled::class) { _, notif ->
+            val code = (notif as TreeAssembled).code
+            val dout = DataOutputStream(FileOutputStream(outFile))
+            code.forEach {
+                //dout.writeByte((it shr 24) and 0xFF)
+                //dout.writeByte((it shr 16) and 0xFF)
+                dout.writeByte((it shr 8) and 0xFF)
+                dout.writeByte(it and 0xFF)
+            }
+            dout.flush()
+            dout.close()
+        }
+    }
+
     enqueueWorker(bindNames(ast))
 }

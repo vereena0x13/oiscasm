@@ -5,6 +5,8 @@ import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.mordant.terminal.Terminal
 import gay.vereena.sicoasm.driver.Driver
@@ -23,11 +25,12 @@ private class CLI : NoOpCliktCommand() {
 
 private class Build : CliktCommand(name = "build") {
     val file: File by argument(name = "FILE", help = "root source file path").file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
+    val outFile: File by option("-o", "--out").file(mustExist = false, canBeDir = false, mustBeWritable = true, canBeSymlink = false).default(File("out.bin"))
 
     override fun run() {
         val driver = Driver()
 
-        driver.enqueueWorker(parse(file, true))
+        driver.enqueueWorker(parse(file, outFile))
 
         if(!driver.run()) exitProcess(1)
 

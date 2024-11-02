@@ -55,37 +55,39 @@ suspend fun WorkerScope.lookupBinding(name: IdentST): Binding = with(WithScopes)
 suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope) = with(WithScopes) {
     val ws = this
     val binding = scope[name.value]
-    if (binding == null) waitOn(name, NAME_BOUND::class) { ws.reportError("Undeclared identifier: $name") }
+    if (binding == null) waitOn(name, NameBound::class) { ws.reportError("Undeclared identifier: $name") }
     scope[name.value]!!
 }
 
 
-val NAME_BOUND = object: Notification {}
+object NameBound : Notification
 
 
 fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope)) {
     val nameBinder = object : ASTVisitor {
-        override suspend fun visitLabel(n: LabelST): ExprST {
+        override suspend fun visitLabel(n: LabelST): ExprST = n.also {
             scope[n.value] = LabelRefST(n.value)
-            notifyOf(n, NAME_BOUND)
-            return super.visitLabel(n)
+            notifyOf(n, NameBound)
         }
 
-        override suspend fun visitDefine(n: DefineST): Node {
+        override suspend fun visitDefine(n: DefineST): Node = n.also {
             scope[n.name.value] = n.value
-            notifyOf(n.name, NAME_BOUND)
-            return super.visitDefine(n)
+            notifyOf(n.name, NameBound)
         }
 
-        override suspend fun visitMacro(n: MacroST): Node {
+        override suspend fun visitMacro(n: MacroST): Node = n.also {
             scope[n.name.value] = n
-            notifyOf(n.name, NAME_BOUND)
-            return super.visitMacro(n)
+            notifyOf(n.name, NameBound)
         }
 
         override suspend fun visitInclude(n: IncludeST): Node = TODO()
 
-        override suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope, n.isPrimary)
+        override suspend fun visitFile(n: FileST): Node = FileST(
+            n.lexer,
+            n.includes,
+            n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST },
+            scope
+        )
     }
     enqueueWorker(expansion(nameBinder.visit(ast) as FileST))
 }
