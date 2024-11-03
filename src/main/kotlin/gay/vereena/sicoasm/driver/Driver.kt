@@ -88,6 +88,7 @@ class Driver {
     }
 
     fun notifyOf(value: WorkUnit, notif: Notification) {
+        notifies++
         notificationCallbacks[notif::class]?.forEach { it(value, notif) }
         val key = NotificationKey(value, notif::class)
         val waiters = blocked[key] ?: return
