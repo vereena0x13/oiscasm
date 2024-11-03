@@ -22,13 +22,17 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
     fun popLabels() { labels = labelsStack.pop() }
 
-    val treeAssembler = object : ASTVisitor {
+    fun getLabel(s: String) =
+        if(s in labels) labels[s]
+        else labelsStack.rawData().firstOrNull { s in it }?.get(s)
+
+    val treeAssembler = object : ASTAdapter {
         suspend fun eval(n: ExprST): Int = when(n) {
             is IntST -> n.value
             is StringST -> ice()
             is IdentST -> eval(lookupBinding(n).value as ExprST)
             is LabelST -> ice()
-            is LabelRefST -> ice() // labels[n.value]!!.addr!! // TODO: wrong
+            is LabelRefST -> ice()
             is UnaryST -> when(n.op) {
                 UnaryOP.NEG -> -eval(n.value)
             }
@@ -43,16 +47,25 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             is ParenST -> eval(n.value)
         }
 
-        override suspend fun visitInt(n: IntST) = n.also { asm.word(it.value) }
-        override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.word(c.code) } }
+        override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
+        override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitIdent(n: IdentST) = ice()
-        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels[n.value]!!) }
-        override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels[it.value]!!) }
+        override suspend fun visitLabelRef(n: LabelRefST) = n.also {
+            val l = getLabel(n.value)
+            if(l == null) {
+                val l2 = asm.label()
+                labels[n.value] = l2
+                asm.word(l2)
+            } else {
+                asm.word(l)
+            }
+        }
+        override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
             BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope).also { popLabels() }

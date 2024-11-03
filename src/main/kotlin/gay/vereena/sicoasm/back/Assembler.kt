@@ -9,9 +9,9 @@ class Assembler {
     private val labels = mutableListOf<Label>()
     private val patches = mutableListOf<Patch>()
 
-    private fun emit(x: Int) { code += x }
-
     private fun markPatch(l: Label) { patches += Patch(pos(), l.id) }
+
+    fun emit(x: Int) { code += x }
 
     fun pos() = code.size
 
@@ -24,12 +24,6 @@ class Assembler {
     fun mark(l: Label): Label {
         assert(l.addr == null)
         l.addr = pos()
-        return l
-    }
-
-    fun word(x: Int = 0): Label {
-        val l = mark(label())
-        emit(x)
         return l
     }
 

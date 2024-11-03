@@ -24,7 +24,7 @@ data class IntST(val value: Int) : ExprST()
 data class StringST(val value: String) : ExprST()
 data class IdentST(val value: String) : ExprST()
 data class LabelST(val value: String) : ExprST()
-data class LabelRefST(val value: String, var label: Label? = null) : ExprST()
+data class LabelRefST(val value: String) : ExprST()
 data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 data object PosST : ExprST()
@@ -38,7 +38,7 @@ data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
 
-interface ASTVisitor {
+interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
         is IntST -> visitInt(n)
         is StringST -> visitString(n)

@@ -267,6 +267,8 @@ fun parse(file: File, outFile: File? = null) = worker(WorkerName("parse")) {
     val parser = Parser(this, lexer)
     val ast = parser.parse()
 
+    println("parsedAst:\n${astToString(ast)}")
+
     if(outFile != null) {
         onNotify(TreeAssembled::class) { _, notif ->
             val code = (notif as TreeAssembled).code

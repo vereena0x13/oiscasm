@@ -8,8 +8,8 @@ import gay.vereena.sicoasm.util.*
 data class Binding(val value: Node, val export: Boolean = false)
 
 class Scope(private val parent: Scope? = null) {
-    internal val bindings = mutableMapOf<String, Binding>()
-    private val includes: MutableSet<Scope> = if(parent?.includes == null) mutableSetOf() else parent.includes
+    private val bindings = mutableMapOf<String, Binding>()
+    private val includes: MutableSet<Scope> = if(parent?.includes == null) mutableSetOf() else parent.includes.toMutableSet()
 
     fun set(name: String, value: Node, export: Boolean = false) {
         if (bindings[name] != null) throw IllegalStateException("Attempt to re-declare '$name'")
@@ -69,7 +69,7 @@ data object NameBound : Notification
 
 
 fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope)) {
-    val nameBinder = object : ASTVisitor {
+    val nameBinder = object : ASTAdapter {
         override suspend fun visitLabel(n: LabelST) = n.also {
             scope[n.value] = LabelRefST(n.value)
             notifyOf(n, NameBound)
@@ -88,7 +88,9 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
             }.also { notifyOf(n.name, NameBound) }
         }
 
-        override suspend fun visitFile(n: FileST): FileST = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)
     }
-    enqueueWorker(expansion(nameBinder.visit(ast) as FileST))
+    val scopedAst = nameBinder.visitFile(ast)
+    println("scopedAst:\n${astToString(scopedAst)}")
+    enqueueWorker(expansion(scopedAst))
 }
