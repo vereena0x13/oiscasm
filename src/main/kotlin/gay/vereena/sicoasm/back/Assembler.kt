@@ -38,6 +38,8 @@ class Assembler {
     }
 
     fun assemble(): IntArray {
+        println(patches.joinToString(", "))
+        println(labels.joinToString(", "))
         patches.forEach { code[it.addr] = labels[it.label].addr!! }
         return code.toIntArray()
     }

@@ -50,7 +50,16 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitIdent(n: IdentST) = ice()
-        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels[it.value]!!) }
+        override suspend fun visitLabel(n: LabelST) = n.also {
+            val l = getLabel(n.value)
+            if(l == null) {
+                val l2 = asm.label()
+                labels[n.value] = l2
+                asm.mark(l2)
+            } else {
+                asm.mark(l)
+            }
+        }
         override suspend fun visitLabelRef(n: LabelRefST) = n.also {
             val l = getLabel(n.value)
             if(l == null) {
@@ -67,8 +76,8 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
-            pushLabels()
-            BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope).also { popLabels() }
+            //pushLabels()
+            BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)//.also { popLabels() }
         }
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitDefine(n: DefineST) = ice()

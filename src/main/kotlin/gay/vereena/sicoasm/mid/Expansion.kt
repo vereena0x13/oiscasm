@@ -26,7 +26,8 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         var labels: Set<String>? = null
 
         override suspend fun visitIdent(n: IdentST) =
-            if(n.value in labels!!) LabelRefST(n.value)
+            //if(n.value in labels!!) LabelRefST(n.value)
+            if(labels?.contains(n.value) == true) LabelRefST(n.value)
             else lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
