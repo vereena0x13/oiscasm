@@ -189,6 +189,7 @@ class Driver {
             }
             errors > 0 -> false
             else -> {
+                TERMINAL.println()
                 TERMINAL.println("Finished in $duration ms!")
                 TERMINAL.println("  Jobs: $retired")
                 TERMINAL.println("  Iterations: $iterations")

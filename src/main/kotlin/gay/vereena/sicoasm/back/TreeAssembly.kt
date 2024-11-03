@@ -10,9 +10,21 @@ class TreeAssembled(val code: IntArray) : Notification
 
 fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.scope)) {
     val asm = Assembler()
-    val labels = mutableMapOf<String, Label>()
+    var labels = mutableMapOf<String, Label>()
+    val labelsStack = Stack<MutableMap<String, Label>>()
+
+    fun pushLabels() {
+        labelsStack.push(labels)
+        val l = labels
+        labels = mutableMapOf()
+        labels.putAll(l)
+    }
+
+    fun popLabels() { labels = labelsStack.pop() }
 
     val treeAssembler = object : ASTAdapter {
+        var blockLabels: Set<String>? = null
+
         suspend fun eval(n: ExprST): Int = when(n) {
             is IntST -> n.value
             is StringST -> ice()
@@ -43,17 +55,26 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.emit(it) })
-        override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope) }
+        override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
+            pushLabels()
+            blockLabels = findLabels(n)
+            BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
+                .also { popLabels(); blockLabels = null }
+        }
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitDefine(n: DefineST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
-        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
+        override suspend fun visitFile(n: FileST): FileST {
+            n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
+            return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
+        }
     }
-    val finalAst = treeAssembler.visit(ast)
 
+    val finalAst = treeAssembler.visit(ast)
     println("final AST:\n${astToString(finalAst)}")
 
     val code = asm.assemble()
-    println(code.joinToString(" "))
+    println(code.indices.joinToString(" ") { it.toString().padStart(2) })
+    println(code.joinToString(" ") { it.toString().padStart(2) })
     notifyOf(ast, TreeAssembled(code))
 }

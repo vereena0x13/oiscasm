@@ -18,7 +18,7 @@ class Scope(private val parent: Scope? = null) {
 
     operator fun set(name: String, value: Node) = set(name, value, false)
 
-    operator fun get(name: String, checkIncludes: Boolean = true): Binding? {
+    operator fun get(name: String, checkIncludes: Boolean = true, checkParent: Boolean = true): Binding? {
         if(name in bindings) return bindings[name]!!
 
         if(checkIncludes) {
@@ -26,7 +26,9 @@ class Scope(private val parent: Scope? = null) {
             if(v != null && v.export) return v
         }
 
-        return parent?.get(name)
+        if(checkParent) return parent?.get(name)
+
+        return null
     }
 }
 
@@ -90,6 +92,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
 
         override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)
     }
+
     val scopedAst = nameBinder.visitFile(ast)
     println("scopedAst:\n${astToString(scopedAst)}")
     enqueueWorker(expansion(scopedAst))
