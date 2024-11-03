@@ -17,6 +17,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private var index: Int = 0
     private var reportErrors: Boolean = true
 
+    private val fileScope = Scope()
+
 
     private fun current(): Token = tokens[index]
 
@@ -221,7 +223,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
         expectNext(RBRACE)
 
-        return MacroST(name, params, body)
+        return MacroST(name, params, body, Scope(fileScope))
     }
 
     // TODO: think of a name for this
@@ -256,7 +258,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 else -> body += parse2()
             }
         }
-        return FileST(lexer, includes, body, Scope())
+        return FileST(lexer, includes, body, fileScope)
     }
 }
 

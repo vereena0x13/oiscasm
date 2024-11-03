@@ -1,3 +1,4 @@
+/*
 include "test2.sico"
 
 
@@ -35,3 +36,14 @@ macro jump(x) {
 macro clear(x) {
     x x >
 }
+*/
+
+
+macro foo() {
+    0 0 l0
+l0:
+}
+
+
+foo()
+foo()

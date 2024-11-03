@@ -2,6 +2,7 @@ package gay.vereena.sicoasm.front
 
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
+import gay.vereena.sicoasm.back.*
 
 
 sealed class Node : WorkUnit
@@ -23,16 +24,16 @@ data class IntST(val value: Int) : ExprST()
 data class StringST(val value: String) : ExprST()
 data class IdentST(val value: String) : ExprST()
 data class LabelST(val value: String) : ExprST()
-data class LabelRefST(val value: String) : ExprST()
+data class LabelRefST(val value: String, var label: Label? = null) : ExprST()
 data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 data object PosST : ExprST()
 data object NextST : ExprST()
 data class ParenST(val value: ExprST) : ExprST()
-data class BlockST(val values: List<Node>) : Node()
+data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
-data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>) : Node()
+data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>, val scope: Scope) : Node()
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
@@ -81,11 +82,11 @@ interface ASTVisitor {
     suspend fun visitNext(n: NextST): ExprST = n
     suspend fun visitParen(n: ParenST): ExprST = ParenST(visitExpr(n.value))
     suspend fun visitMacroCall(n: MacroCallST): Node = MacroCallST(n.name, n.args.map { visitExpr(it) })
-    suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) })
+    suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }, n.scope)
     suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
     suspend fun visitMacro(n: MacroST): Node = n
     suspend fun visitInclude(n: IncludeST): Node = n
-    suspend fun visitFile(n: FileST): Node = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
+    suspend fun visitFile(n: FileST): FileST = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
 }
 
 
@@ -198,7 +199,6 @@ fun astToString(n: Node): String {
             is FileST -> {
                 emitln("file:")
                 level++
-                    indent()
                     if(n.includes.isNotEmpty()) {
                         indent()
                         emitln("includes:")

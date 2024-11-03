@@ -21,24 +21,14 @@ class Assembler {
         return l
     }
 
-    fun mark(): Label = mark(label())
-
     fun mark(l: Label): Label {
         assert(l.addr == null)
         l.addr = pos()
         return l
     }
 
-    fun at(addr: Int): Label {
-        val l = label()
-        l.addr = addr
-        return l
-    }
-
-    fun word() = word(0)
-
-    fun word(x: Int): Label {
-        val l = mark()
+    fun word(x: Int = 0): Label {
+        val l = mark(label())
         emit(x)
         return l
     }
@@ -51,11 +41,6 @@ class Assembler {
             emit(l.addr!!)
         }
         return l
-    }
-
-    fun set(addr: Int, value: Int) {
-        assert(addr < code.size)
-        code[addr] = value
     }
 
     fun assemble(): IntArray {

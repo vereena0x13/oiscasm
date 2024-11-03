@@ -8,25 +8,27 @@ import gay.vereena.sicoasm.util.*
 
 class TreeAssembled(val code: IntArray) : Notification
 
-
-fun assembleTree(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope)) {
+fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.scope)) {
     val asm = Assembler()
-    val labels = mutableMapOf<String, Label>()
+    var labels = mutableMapOf<String, Label>()
+    val labelsStack = Stack<MutableMap<String, Label>>()
 
-    val labelFinder = object : ASTVisitor {
-        override suspend fun visitLabel(n: LabelST): ExprST = n.also {
-            if(labels[n.value] != null) reportFatal("Duplicate label '${n.value}")
-            labels[n.value] = asm.label()
-        }
+    fun pushLabels() {
+        labelsStack.push(labels)
+        val ls = labels
+        labels = mutableMapOf()
+        labels.putAll(ls)
     }
+
+    fun popLabels() { labels = labelsStack.pop() }
 
     val treeAssembler = object : ASTVisitor {
         suspend fun eval(n: ExprST): Int = when(n) {
             is IntST -> n.value
             is StringST -> ice()
-            is IdentST -> eval(lookupBinding(n).value!! as ExprST)
+            is IdentST -> eval(lookupBinding(n).value as ExprST)
             is LabelST -> ice()
-            is LabelRefST -> labels[n.value]!!.addr!! // TODO: wrong
+            is LabelRefST -> ice() // labels[n.value]!!.addr!! // TODO: wrong
             is UnaryST -> when(n.op) {
                 UnaryOP.NEG -> -eval(n.value)
             }
@@ -41,27 +43,28 @@ fun assembleTree(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.sc
             is ParenST -> eval(n.value)
         }
 
-        override suspend fun visitInt(n: IntST): ExprST = n.also { asm.word(it.value) }
-        override suspend fun visitString(n: StringST): ExprST = n.also { it.value.forEach { c -> asm.word(c.code) } }
-        override suspend fun visitIdent(n: IdentST): ExprST = ice()
-        override suspend fun visitLabel(n: LabelST): ExprST = n.also { asm.mark(labels[n.value]!!) }
-        override suspend fun visitLabelRef(n: LabelRefST): ExprST = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitUnary(n: UnaryST): ExprST = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitBinary(n: BinaryST): ExprST = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitPos(n: PosST): ExprST = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitNext(n: NextST): ExprST = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitParen(n: ParenST): ExprST = IntST(eval(n).also { asm.word(it) })
-        override suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList())
-        override suspend fun visitMacroCall(n: MacroCallST): Node = ice()
-        override suspend fun visitDefine(n: DefineST): Node = ice()
-        override suspend fun visitMacro(n: MacroST): Node = ice()
-        override suspend fun visitFile(n: FileST): Node = FileST(
-            n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope
-        )
+        override suspend fun visitInt(n: IntST) = n.also { asm.word(it.value) }
+        override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.word(c.code) } }
+        override suspend fun visitIdent(n: IdentST) = ice()
+        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels[n.value]!!) }
+        override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
+        override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.word(it) })
+        override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
+            pushLabels()
+            BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope).also { popLabels() }
+        }
+        override suspend fun visitMacroCall(n: MacroCallST) = ice()
+        override suspend fun visitDefine(n: DefineST) = ice()
+        override suspend fun visitMacro(n: MacroST) = ice()
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
     }
-    val finalAst = treeAssembler.visit(labelFinder.visit(ast))
+    val finalAst = treeAssembler.visit(ast)
 
-    println(astToString(finalAst))
+    println("final AST:\n${astToString(finalAst)}")
 
     val code = asm.assemble()
     println(code.joinToString(" "))
