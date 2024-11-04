@@ -9,14 +9,35 @@ sealed class Node : WorkUnit
 sealed class ExprST : Node()
 
 enum class UnaryOP {
-    NEG
+    NEG,
+    BIT_NOT,
+    NOT
 }
 
 enum class BinaryOP {
     ADD,
     SUB,
     MUL,
-    DIV
+    DIV,
+    MOD,
+    POW,
+
+    BIT_AND,
+    BIT_OR,
+    BIT_XOR,
+
+    SHL,
+    SHR,
+
+    EQ,
+    NE,
+    LT,
+    GT,
+    LTE,
+    GTE,
+
+    AND,
+    OR
 }
 
 data class IntST(val value: Int) : ExprST()
@@ -28,7 +49,6 @@ data class LabelRefST(val value: String) : ExprST()
 data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 data object PosST : ExprST()
-data object NextST : ExprST()
 data class ParenST(val value: ExprST) : ExprST()
 data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
@@ -49,7 +69,6 @@ interface ASTAdapter {
         is UnaryST -> visitUnary(n)
         is BinaryST -> visitBinary(n)
         is PosST -> visitPos(n)
-        is NextST -> visitNext(n)
         is ParenST -> visitParen(n)
         is BlockST -> visitBlock(n)
         is MacroCallST -> visitMacroCall(n)
@@ -69,7 +88,6 @@ interface ASTAdapter {
         is UnaryST -> visitUnary(n)
         is BinaryST -> visitBinary(n)
         is PosST -> visitPos(n)
-        is NextST -> visitNext(n)
         is ParenST -> visitParen(n)
     }
 
@@ -82,7 +100,6 @@ interface ASTAdapter {
     suspend fun visitUnary(n: UnaryST): ExprST = UnaryST(n.op, visitExpr(n.value))
     suspend fun visitBinary(n: BinaryST): ExprST = BinaryST(n.op, visitExpr(n.left), visitExpr(n.right))
     suspend fun visitPos(n: PosST): ExprST = n
-    suspend fun visitNext(n: NextST): ExprST = n
     suspend fun visitParen(n: ParenST): ExprST = ParenST(visitExpr(n.value))
     suspend fun visitMacroCall(n: MacroCallST): Node = MacroCallST(n.name, n.args.map { visitExpr(it) })
     suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }, n.scope)
@@ -135,7 +152,6 @@ fun astToString(n: Node): String {
                 level--
             }
             is PosST -> emitln("pos")
-            is NextST -> emitln("next")
             is ParenST -> {
                 emitln("paren:")
                 level++

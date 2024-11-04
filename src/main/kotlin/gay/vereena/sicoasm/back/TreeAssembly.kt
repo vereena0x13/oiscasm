@@ -34,15 +34,31 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             is LabelRefST -> ice()
             is UnaryST -> when(n.op) {
                 UnaryOP.NEG -> -eval(n.value)
+                UnaryOP.BIT_NOT -> eval(n.value).inv()
+                UnaryOP.NOT -> TODO()
             }
             is BinaryST -> when(n.op) {
                 BinaryOP.ADD -> eval(n.left) + eval(n.right)
                 BinaryOP.SUB -> eval(n.left) - eval(n.right)
                 BinaryOP.MUL -> eval(n.left) * eval(n.right)
                 BinaryOP.DIV -> eval(n.left) / eval(n.right)
+                BinaryOP.MOD -> eval(n.left) % eval(n.right)
+                BinaryOP.POW -> TODO()
+                BinaryOP.BIT_AND -> eval(n.left) and eval(n.right)
+                BinaryOP.BIT_OR -> eval(n.left) or eval(n.right)
+                BinaryOP.BIT_XOR -> eval(n.left) xor eval(n.right)
+                BinaryOP.SHL -> eval(n.left) shl eval(n.right)
+                BinaryOP.SHR -> eval(n.left) shr eval(n.right)
+                BinaryOP.EQ -> TODO()
+                BinaryOP.NE -> TODO()
+                BinaryOP.LT -> TODO()
+                BinaryOP.GT -> TODO()
+                BinaryOP.LTE -> TODO()
+                BinaryOP.GTE -> TODO()
+                BinaryOP.AND -> TODO()
+                BinaryOP.OR -> TODO()
             }
             is PosST -> asm.pos()
-            is NextST -> asm.pos() + 1
             is ParenST -> eval(n.value)
         }
 
@@ -54,7 +70,6 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
-        override suspend fun visitNext(n: NextST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()

@@ -14,7 +14,7 @@ t1: 0
 
 
 start:
-            givz() giv2(NL) >
+            givz() giv2(NL) ?+1
             clear(0)
             nop()
             clear(2)
@@ -37,7 +37,7 @@ macro jump(x) {
 }
 
 macro clear(x) {
-    x x >
+    x x ?+1
 }
 
 macro nop() {

@@ -26,9 +26,27 @@ enum class TokenType {
     ADD,                    // +
     MUL,                    // *
     DIV,                    // /
+    MOD,                    // %
+    POW,                    // **
+
+    BIT_AND,                // &
+    BIT_OR,                 // |
+    BIT_XOR,                // ^
+
+    SHL,                    // <<
+    SHR,                    // >>
+
+    EQ,                     // ==
+    NE,                     // !=
+    LT,                     // <
+    GT,                     // >
+    LTE,                    // <=
+    GTE,                    // >=
+
+    AND,                    // &&
+    OR,                     // ||
 
     POS,                    // ?
-    NEXT,                   // >
 
     STRING,                 // "..."
     INT,                    // [0-9]*
@@ -124,7 +142,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
     private fun ignore() { start = pos }
 
-    private fun unexpected(c: String) {
+    private fun unexpected(c: String): Nothing {
         scope.reportFatal(
             formatError(
                 "Unexpected: '${escape(c)}'",
@@ -173,7 +191,10 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
                 '+' -> emit(ADD)
                 '-' -> emit(SUB)
-                '*' -> emit(MUL)
+                '*' -> when {
+                    accept('*') -> emit(POW)
+                    else -> emit(MUL)
+                }
                 '/' -> when {
                     accept('/') -> {
                         while(more() && peek() != '\n') next()
@@ -193,8 +214,39 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     }
                     else -> emit(DIV)
                 }
+                '%' -> emit(MOD)
+
+                '&' -> when {
+                    accept('&') -> emit(AND)
+                    else -> emit(BIT_AND)
+                }
+                '|' -> when {
+                    accept('}') -> emit(OR)
+                    else -> emit(BIT_OR)
+                }
+                '^' -> emit(BIT_XOR)
+
+                '<' -> when {
+                    accept('<') -> emit(SHL)
+                    accept('=') -> emit(LTE)
+                    else -> emit(LT)
+                }
+                '>' -> when {
+                    accept('>') -> emit(SHR)
+                    accept('=') -> emit(GTE)
+                    else -> emit(GT)
+                }
+
+                '=' -> when {
+                    accept('=') -> emit(EQ)
+                    else -> unexpected(c.toString())
+                }
+                '!' -> when {
+                    accept('=') -> emit(NE)
+                    else -> unexpected(c.toString())
+                }
+
                 '?' -> emit(POS)
-                '>' -> emit(NEXT)
 
                 '"' -> {
                     val start = pos

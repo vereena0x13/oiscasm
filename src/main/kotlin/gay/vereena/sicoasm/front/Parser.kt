@@ -123,7 +123,6 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             else -> parseIdent()
         }
         acceptNext(POS) -> PosST
-        acceptNext(NEXT) -> NextST
         acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
         else -> unexpected()
     }
@@ -175,9 +174,16 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return ret
     }
 
-    private fun parseBinaryMul(): ExprST = parseBinary(::parseUnary, MUL, DIV)
-
-    private fun parseExpr(): ExprST = parseBinary(::parseBinaryMul, ADD, SUB)
+    private fun parseBinaryMul() = parseBinary(::parseUnary, MUL, DIV)
+    private fun parseBinaryAdd() = parseBinary(::parseBinaryMul, ADD, SUB)
+    private fun parseBinaryShift() = parseBinary(::parseBinaryAdd, SHL, SHR)
+    private fun parseBinaryComparison() = parseBinary(::parseBinaryShift, LT, GT, LTE, GTE)
+    private fun parseBinaryEquality() = parseBinary(::parseBinaryComparison, EQ, NE)
+    private fun parseBinaryAnd() = parseBinary(::parseBinaryEquality, AND)
+    private fun parseBinaryOr() = parseBinary(::parseBinaryAnd, OR)
+    private fun parseBinaryLogicalAnd() = parseBinary(::parseBinaryOr, BIT_AND)
+    private fun parseBinaryLogicalOr() = parseBinary(::parseBinaryLogicalAnd, BIT_OR)
+    private fun parseExpr(): ExprST = parseBinary(::parseBinaryLogicalOr, ADD, SUB)
 
     private fun parseInclude(): IncludeST {
         expectIdentNext("include")
