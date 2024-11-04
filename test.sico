@@ -1,10 +1,10 @@
 /*
-include "test2.sico"
+.include "test2.sico"
 
 
-define NL 10
-define EXIT -1
-define PUTC -2
+.define NL 10
+.define EXIT -1
+.define PUTC -2
 
 
             jump(start)
@@ -23,34 +23,41 @@ start:
             jump(start)
 
 
-macro giv(x) {
+.macro giv(x) {
     x
 }
 
-macro givz() {
+.macro givz() {
     giv2(0)
 }
 
-macro giv2(y) { giv(y) }
+.macro giv2(y) { giv(y) }
 
-macro jump(x) {
+.macro jump(x) {
     t0 t0 x
 }
 
-macro clear(x) {
+.macro clear(x) {
     x x ?+1
 }
 
-macro nop() {
+.macro nop() {
     t0 t0 l0
 l0:
 }
 
-macro nop2() {
+.macro nop2() {
     t1 t1 l0
 l0:
 }
 */
 
+
+.macro clear(x) {
+    x x ?+1
+}
+
+
+.repeat 4 { i i ?+1 }
 
 

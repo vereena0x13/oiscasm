@@ -54,6 +54,7 @@ enum class TokenType {
     STRING,                 // "..."
     INT,                    // [0-9]*
     IDENT,                  // ident
+    DIRECTIVE,              // .ident
     LABEL,                  // ident:
 }
 
@@ -262,25 +263,27 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                         // TODO: escape sequences
                     }
 
-                    if (!accept('"')) {
-                        throw LexException("Unclosed string")
-                    }
+                    if (!accept('"')) throw LexException("Unclosed string")
 
                     val end = pos - 1
                     emit(STRING, source.substring(start, end), col, Span(start, end - 1))
                 }
 
-                else -> {
-                    if (isLetter(c) || c == '_') {
+                else -> when {
+                    isLetter(c) || c == '_' -> {
                         scanIdent()
                         if(accept(':')) emit(LABEL, source.substring(start, pos - 1))
                         else emit(IDENT)
-                    } else if (isDigit(c)) {
+                    }
+                    c == '.' -> {
+                        scanIdent()
+                        emit(DIRECTIVE, source.substring(start + 1, pos))
+                    }
+                    isDigit(c) -> {
                         while (more() && isDigit(peek())) next()
                         emit(INT)
-                    } else {
-                        unexpected(c.toString())
                     }
+                    else -> unexpected(c.toString())
                 }
             }
         }

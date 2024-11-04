@@ -22,66 +22,45 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         labels.putAll(l)
     }
 
-    fun popLabels() { labels = labelsStack.pop() }
+    fun popLabels() {
+        labels = labelsStack.pop()
+    }
 
     val treeAssembler = object : ASTAdapter {
         var blockLabels: Set<String>? = null
 
-        suspend fun eval(n: ExprST): Int = when(n) {
-            is IntST -> n.value
-            is StringST -> ice()
-            is IdentST -> eval(lookupBinding(n).value as ExprST)
-            is BoolST -> ice()
-            is LabelST -> ice()
-            is LabelRefST -> ice()
-            is UnaryST -> when(n.op) {
-                UnaryOP.NEG -> -eval(n.value)
-                UnaryOP.BIT_NOT -> eval(n.value).inv()
-                UnaryOP.NOT -> ice()
-            }
-            is BinaryST -> when(n.op) {
-                BinaryOP.ADD -> eval(n.left) + eval(n.right)
-                BinaryOP.SUB -> eval(n.left) - eval(n.right)
-                BinaryOP.MUL -> eval(n.left) * eval(n.right)
-                BinaryOP.DIV -> eval(n.left) / eval(n.right)
-                BinaryOP.MOD -> eval(n.left) % eval(n.right)
-                BinaryOP.POW -> eval(n.left).toDouble().pow(eval(n.right)).toInt()
-                BinaryOP.BIT_AND -> eval(n.left) and eval(n.right)
-                BinaryOP.BIT_OR -> eval(n.left) or eval(n.right)
-                BinaryOP.BIT_XOR -> eval(n.left) xor eval(n.right)
-                BinaryOP.SHL -> eval(n.left) shl eval(n.right)
-                BinaryOP.SHR -> eval(n.left) shr eval(n.right)
-                BinaryOP.EQ -> ice()
-                BinaryOP.NE -> ice()
-                BinaryOP.LT -> ice()
-                BinaryOP.GT -> ice()
-                BinaryOP.LTE -> ice()
-                BinaryOP.GTE -> ice()
-                BinaryOP.AND -> ice()
-                BinaryOP.OR -> ice()
-            }
-            is PosST -> asm.pos()
-            is ParenST -> eval(n.value)
-        }
+        suspend fun eval(n: ExprST): Int = evalExpr(n) { asm.pos() }
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
+        override suspend fun visitLabelRef(n: LabelRefST) =
+            n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
+
         override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
+
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
             blockLabels = findLabels(n)
             BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
                 .also { popLabels(); blockLabels = null }
         }
+
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitDefine(n: DefineST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
+
+        override suspend fun visitRes(n: ResST): Node {
+            val count = eval(n.count)
+            val value = eval(n.value)
+            (0..<count).forEach { _ -> asm.emit(value) }
+            return n
+        }
+
         override suspend fun visitFile(n: FileST): FileST {
             n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
             return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)

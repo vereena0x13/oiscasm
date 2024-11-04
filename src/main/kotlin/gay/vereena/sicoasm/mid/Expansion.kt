@@ -47,6 +47,18 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             notifyOf(n, MacroExpanded(macro, n, block))
             return block
         }
+
+        override suspend fun visitRepeat(n: RepeatST): Node {
+            val count = evalExpr(n.count)
+            val xs = mutableListOf<Node>()
+            (0..<count).forEach { i ->
+                withScope(Scope(scope)) {
+                    scope[n.iteratorName] = IntST(i)
+                    n.body.forEach { xs += visit(it) }
+                }
+            }
+            return BlockST(xs, scope)
+        }
     }
 
     val expandedAst = expander.visit(ast)

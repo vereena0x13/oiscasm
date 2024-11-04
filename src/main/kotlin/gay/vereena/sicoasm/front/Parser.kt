@@ -68,7 +68,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 val ns = if(not) "not " else ""
                 "; expected $ns${expected}"
             } else { "" }
-            scope.reportFatal(lexer.formatError("Unexpected token: '${t.value}'$es", t), true)
+            Throwable().printStackTrace()
+            scope.reportFatal(lexer.formatError("Unexpected token: '${t.value}' (${t.type})$es", t), true)
         } else {
             throw ParseException()
         }
@@ -79,13 +80,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         else unexpected(not, expected.joinToString(", ") { "$it" })
     }
 
-    private fun acceptIdent(value: String): Boolean {
-        if(accept(IDENT)) return current().value == value
+    private fun acceptDirective(value: String): Boolean {
+        if(accept(DIRECTIVE)) return current().value == value
         return false
     }
 
-    private fun expectIdentNext(value: String): Token {
-        val t = expectNext(IDENT)
+    private fun expectDirectiveNext(value: String): Token {
+        val t = expectNext(DIRECTIVE)
         if(t.value != value) unexpected(expected = value)
         return t
     }
@@ -205,12 +206,12 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun parseExpr(): ExprST = parseBinary(::parseBinaryLogicalOr, ADD, SUB)
 
     private fun parseInclude(): IncludeST {
-        expectIdentNext("include")
+        expectDirectiveNext("include")
         return IncludeST(parseString().value)
     }
 
     private fun parseDefine(): DefineST {
-        expectIdentNext("define")
+        expectDirectiveNext("define")
         val name = parseIdent()
         val value = parseExpr()
         return DefineST(name, value)
@@ -232,7 +233,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun parseMacro(): MacroST {
-        expectIdentNext("macro")
+        expectDirectiveNext("macro")
 
         val name = parseIdent()
 
@@ -253,6 +254,27 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         expectNext(RBRACE)
 
         return MacroST(name, params, body, Scope(fileScope))
+    }
+
+    private fun parseRepaet(): RepeatST {
+        expectDirectiveNext("repeat")
+
+        val count = parseExpr()
+        val iteratorName = if(acceptNext(COMMA)) parseIdent().value else "i"
+
+        val body = mutableListOf<Node>()
+        expectNext(LBRACE)
+        while(more() && !accept(RBRACE)) body += parse2()
+        expectNext(RBRACE)
+
+        return RepeatST(count, iteratorName, body, Scope(fileScope))
+    }
+
+    private fun parseRes(): ResST {
+        expectDirectiveNext("res")
+        val count = parseExpr()
+        val value = if(acceptNext(COMMA)) parseExpr() else IntST(0)
+        return ResST(count, value)
     }
 
     // TODO: think of a name for this
@@ -281,9 +303,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         val body = mutableListOf<Node>()
         while(more()) {
             when {
-                acceptIdent("include") -> includes += parseInclude()
-                acceptIdent("define") -> body += parseDefine()
-                acceptIdent("macro") -> body += parseMacro()
+                acceptDirective("include") -> includes += parseInclude()
+                acceptDirective("define") -> body += parseDefine()
+                acceptDirective("macro") -> body += parseMacro()
+                acceptDirective("repeat") -> body += parseRepaet()
+                acceptDirective("res") -> body += parseRes()
                 else -> body += parse2()
             }
         }

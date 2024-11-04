@@ -1,7 +1,10 @@
 package gay.vereena.sicoasm.front
 
+import kotlin.math.*
+
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
+import gay.vereena.sicoasm.util.*
 
 
 sealed class Node : WorkUnit
@@ -54,9 +57,50 @@ data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
 data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>, val scope: Scope) : Node()
+data class RepeatST(val count: ExprST, val iteratorName: String, val body: List<Node>, val scope: Scope) : Node()
+data class ResST(val count: ExprST, val value: ExprST) : Node()
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
+
+suspend fun WorkerScope.evalExpr(n: ExprST, pos: (() -> Int)? = null): Int = with(WithScopes) {
+    when (n) {
+        is IntST -> n.value
+        is StringST -> ice()
+        is IdentST -> evalExpr(lookupBinding(n).value as ExprST, pos)
+        is BoolST -> ice()
+        is LabelST -> ice()
+        is LabelRefST -> ice()
+        is UnaryST -> when (n.op) {
+            UnaryOP.NEG -> -evalExpr(n.value, pos)
+            UnaryOP.BIT_NOT -> evalExpr(n.value, pos).inv()
+            UnaryOP.NOT -> ice()
+        }
+        is BinaryST -> when (n.op) {
+            BinaryOP.ADD -> evalExpr(n.left, pos) + evalExpr(n.right, pos)
+            BinaryOP.SUB -> evalExpr(n.left, pos) - evalExpr(n.right, pos)
+            BinaryOP.MUL -> evalExpr(n.left, pos) * evalExpr(n.right, pos)
+            BinaryOP.DIV -> evalExpr(n.left, pos) / evalExpr(n.right, pos)
+            BinaryOP.MOD -> evalExpr(n.left, pos) % evalExpr(n.right, pos)
+            BinaryOP.POW -> evalExpr(n.left, pos).toDouble().pow(evalExpr(n.right, pos)).toInt()
+            BinaryOP.BIT_AND -> evalExpr(n.left, pos) and evalExpr(n.right, pos)
+            BinaryOP.BIT_OR -> evalExpr(n.left, pos) or evalExpr(n.right, pos)
+            BinaryOP.BIT_XOR -> evalExpr(n.left, pos) xor evalExpr(n.right, pos)
+            BinaryOP.SHL -> evalExpr(n.left, pos) shl evalExpr(n.right, pos)
+            BinaryOP.SHR -> evalExpr(n.left, pos) shr evalExpr(n.right, pos)
+            BinaryOP.EQ -> ice()
+            BinaryOP.NE -> ice()
+            BinaryOP.LT -> ice()
+            BinaryOP.GT -> ice()
+            BinaryOP.LTE -> ice()
+            BinaryOP.GTE -> ice()
+            BinaryOP.AND -> ice()
+            BinaryOP.OR -> ice()
+        }
+        is PosST -> if(pos != null) pos() else ice()
+        is ParenST -> evalExpr(n.value, pos)
+    }
+}
 
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
@@ -74,6 +118,8 @@ interface ASTAdapter {
         is MacroCallST -> visitMacroCall(n)
         is DefineST -> visitDefine(n)
         is MacroST -> visitMacro(n)
+        is RepeatST -> visitRepeat(n)
+        is ResST -> visitRes(n)
         is IncludeST -> visitInclude(n)
         is FileST -> visitFile(n)
     }
@@ -105,6 +151,8 @@ interface ASTAdapter {
     suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }, n.scope)
     suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
     suspend fun visitMacro(n: MacroST): Node = n
+    suspend fun visitRepeat(n: RepeatST): Node = n
+    suspend fun visitRes(n: ResST): Node = n
     suspend fun visitInclude(n: IncludeST): Node = n
     suspend fun visitFile(n: FileST): FileST = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
 }
@@ -199,6 +247,18 @@ fun astToString(n: Node): String {
                         level--
                     }
                 level--
+            }
+            is RepeatST -> {
+                emitln("repeat(${n.count}, ${n.iteratorName}):")
+                level++
+                n.body.forEach {
+                    indent()
+                    visit(it)
+                }
+                level--
+            }
+            is ResST -> {
+                emitln("res(${n.count}, ${n.value})")
             }
             is MacroCallST -> {
                 emitln("macroCall(${n.name}):")
