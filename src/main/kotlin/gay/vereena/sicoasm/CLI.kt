@@ -1,18 +1,18 @@
 package gay.vereena.sicoasm
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.NoOpCliktCommand
-import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.core.subcommands
-import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.file
-import com.github.ajalt.mordant.terminal.Terminal
-import gay.vereena.sicoasm.driver.Driver
-import gay.vereena.sicoasm.front.parse
-import java.io.File
-import kotlin.system.exitProcess
+import kotlin.system.*
+
+import java.io.*
+
+import com.github.ajalt.clikt.core.*
+import com.github.ajalt.clikt.parameters.arguments.*
+import com.github.ajalt.clikt.parameters.options.*
+import com.github.ajalt.clikt.parameters.types.*
+import com.github.ajalt.mordant.terminal.*
+
+import gay.vereena.sicoasm.driver.*
+import gay.vereena.sicoasm.front.*
+import gay.vereena.sicoasm.back.*
 
 
 val TERMINAL = Terminal()
@@ -24,16 +24,41 @@ private class CLI : NoOpCliktCommand() {
 
 
 private class Build : CliktCommand(name = "build") {
-    val file: File by argument(name = "FILE", help = "root source file path").file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
-    val outFile: File by option("-o", "--out").file(mustExist = false, canBeDir = false, mustBeWritable = true, canBeSymlink = false).default(File("out.bin"))
+    val file: File by argument(name = "FILE", help = "root source file path")
+        .file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
+
+    val outFile: File by option("-o", "--out")
+        .file(mustExist = false, canBeDir = false, mustBeWritable = true, canBeSymlink = false)
+        .default(File("out.bin"))
+
+    val bitWidth: Int by option("-w", "--width")
+        .int()
+        .default(16)
+        .check { it == 8 || it == 16 || it == 32 }
 
     override fun run() {
         val driver = Driver()
 
         driver.enqueueWorker(parse(file, outFile))
 
-        if(!driver.run()) exitProcess(1)
+        with(driver) {
+            onNotify(TreeAssembled::class) { _, notif ->
+                val code = (notif as TreeAssembled).code
+                val dout = DataOutputStream(FileOutputStream(outFile))
+                code.forEach {
+                    if(bitWidth == 32) {
+                        dout.writeByte((it shr 24) and 0xFF)
+                        dout.writeByte((it shr 16) and 0xFF)
+                    }
+                    if(bitWidth >= 16) dout.writeByte((it shr 8) and 0xFF)
+                    dout.writeByte(it and 0xFF)
+                }
+                dout.flush()
+                dout.close()
+            }
+        }
 
+        if(!driver.run()) exitProcess(1)
 
         // TODO
     }

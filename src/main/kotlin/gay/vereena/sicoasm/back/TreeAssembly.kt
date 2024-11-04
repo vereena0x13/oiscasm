@@ -29,6 +29,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             is IntST -> n.value
             is StringST -> ice()
             is IdentST -> eval(lookupBinding(n).value as ExprST)
+            is BoolST -> ice()
             is LabelST -> ice()
             is LabelRefST -> ice()
             is UnaryST -> when(n.op) {

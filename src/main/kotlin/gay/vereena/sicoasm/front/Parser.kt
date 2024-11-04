@@ -117,7 +117,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseAtom(): ExprST = when {
         accept(INT) -> parseInt()
-        accept(IDENT) -> parseIdent()
+        accept(IDENT) -> when(current().value) {
+            "true" -> BoolST(true).also { next() }
+            "false" -> BoolST(false).also { next() }
+            else -> parseIdent()
+        }
         acceptNext(POS) -> PosST
         acceptNext(NEXT) -> NextST
         acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
@@ -268,21 +272,6 @@ fun parse(file: File, outFile: File? = null) = worker(WorkerName("parse")) {
     val ast = parser.parse()
 
     println("parsedAst:\n${astToString(ast)}")
-
-    if(outFile != null) {
-        onNotify(TreeAssembled::class) { _, notif ->
-            val code = (notif as TreeAssembled).code
-            val dout = DataOutputStream(FileOutputStream(outFile))
-            code.forEach {
-                //dout.writeByte((it shr 24) and 0xFF)
-                //dout.writeByte((it shr 16) and 0xFF)
-                dout.writeByte((it shr 8) and 0xFF)
-                dout.writeByte(it and 0xFF)
-            }
-            dout.flush()
-            dout.close()
-        }
-    }
 
     enqueueWorker(bindNames(ast))
 }

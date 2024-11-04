@@ -2,7 +2,6 @@ package gay.vereena.sicoasm.front
 
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.back.*
 
 
 sealed class Node : WorkUnit
@@ -23,6 +22,7 @@ enum class BinaryOP {
 data class IntST(val value: Int) : ExprST()
 data class StringST(val value: String) : ExprST()
 data class IdentST(val value: String) : ExprST()
+data class BoolST(val value: Boolean) : ExprST()
 data class LabelST(val value: String) : ExprST()
 data class LabelRefST(val value: String) : ExprST()
 data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
@@ -43,6 +43,7 @@ interface ASTAdapter {
         is IntST -> visitInt(n)
         is StringST -> visitString(n)
         is IdentST -> visitIdent(n)
+        is BoolST -> visitBool(n)
         is LabelST -> visitLabel(n)
         is LabelRefST -> visitLabelRef(n)
         is UnaryST -> visitUnary(n)
@@ -62,6 +63,7 @@ interface ASTAdapter {
         is IntST -> visitInt(n)
         is StringST -> visitString(n)
         is IdentST -> visitIdent(n)
+        is BoolST -> visitBool(n)
         is LabelST -> visitLabel(n)
         is LabelRefST -> visitLabelRef(n)
         is UnaryST -> visitUnary(n)
@@ -74,6 +76,7 @@ interface ASTAdapter {
     suspend fun visitInt(n: IntST): ExprST = n
     suspend fun visitString(n: StringST): ExprST = n
     suspend fun visitIdent(n: IdentST): ExprST = n
+    suspend fun visitBool(n: BoolST): ExprST = n
     suspend fun visitLabel(n: LabelST): ExprST = n
     suspend fun visitLabelRef(n: LabelRefST): ExprST = n
     suspend fun visitUnary(n: UnaryST): ExprST = UnaryST(n.op, visitExpr(n.value))
@@ -100,11 +103,12 @@ fun astToString(n: Node): String {
 
     fun visit(n: Node) {
         when(n) {
-            is IntST -> emitln("int(" + n.value + ")")
-            is StringST -> emitln("string(" + n.value +  ")")
-            is IdentST -> emitln("ident(" + n.value + ")")
-            is LabelST -> emitln("label(" + n.value + ")")
-            is LabelRefST -> emitln("label_ref(" + n.value + ")")
+            is IntST -> emitln("int(${n.value})")
+            is StringST -> emitln("string(${n.value})")
+            is IdentST -> emitln("ident(${n.value})")
+            is BoolST -> emitln("bool(${n.value})")
+            is LabelST -> emitln("label(${n.value})")
+            is LabelRefST -> emitln("label_ref(${n.value})")
             is UnaryST -> {
                 emitln("unary(${n.op}):")
                 level++
@@ -195,7 +199,7 @@ fun astToString(n: Node): String {
                     }
                 level--
             }
-            is IncludeST -> emitln("include(" + n.path + ")")
+            is IncludeST -> emitln("include(${n.path})")
             is FileST -> {
                 emitln("file:")
                 level++
