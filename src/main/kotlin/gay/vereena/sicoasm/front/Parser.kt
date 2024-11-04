@@ -294,6 +294,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
         return when {
             accept(LABEL) -> LabelST(expectNext(LABEL).value)
+            acceptDirective("res") -> parseRes()
             else -> parseExpr()
         }
     }
@@ -307,7 +308,6 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 acceptDirective("define") -> body += parseDefine()
                 acceptDirective("macro") -> body += parseMacro()
                 acceptDirective("repeat") -> body += parseRepaet()
-                acceptDirective("res") -> body += parseRes()
                 else -> body += parse2()
             }
         }

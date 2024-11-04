@@ -54,13 +54,6 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitDefine(n: DefineST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
 
-        override suspend fun visitRes(n: ResST): Node {
-            val count = eval(n.count)
-            val value = eval(n.value)
-            (0..<count).forEach { _ -> asm.emit(value) }
-            return n
-        }
-
         override suspend fun visitFile(n: FileST): FileST {
             n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
             return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
