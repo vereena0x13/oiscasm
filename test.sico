@@ -52,14 +52,18 @@ l0:
 }
 */
 
-
 .macro clear(x) {
-    x x ?+1
+    .repeat 2 { x } ?+1
 }
 
 
-.repeat 4, x {
-    .res 3, 1<<x
+.macro resx(x) {
+    .repeat 2 {
+        .res 2, 1 << x
+        .res 2, 2 << x
+    }
 }
 
-
+resx(1)
+resx(2)
+resx(3)

@@ -37,6 +37,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
                     true
                 )
                 withScope(Scope(scope)) {
+                    println("mac $scope")
                     n.args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                     labels = findLabels(macro)
                     BlockST(macro.body.map { visit(it) }, scope).also { labels = null }
@@ -52,6 +53,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             val count = evalExpr(n.count)
             val xs = mutableListOf<Node>()
             (0..<count).forEach { i ->
+                println("rep $scope")
                 withScope(Scope(scope)) {
                     scope[n.iteratorName] = IntST(i)
                     n.body.forEach { xs += visit(it) }

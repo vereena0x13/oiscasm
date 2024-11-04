@@ -4,7 +4,6 @@ import java.io.*
 
 import gay.vereena.sicoasm.front.TokenType.*
 import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.back.*
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.util.*
 
@@ -17,8 +16,17 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private var index: Int = 0
     private var reportErrors: Boolean = true
 
-    private val fileScope = Scope()
 
+    private var currentScope = Scope()
+    private val currentScopeStack = Stack<Scope>()
+
+    private fun <T> pushScope(action: (Scope) -> T): T {
+        currentScopeStack.push(currentScope)
+        currentScope = Scope(currentScope)
+        val result = action(currentScope)
+        currentScope = currentScopeStack.pop()
+        return result
+    }
 
     private fun current(): Token = tokens[index]
 
@@ -64,10 +72,12 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun unexpected(not: Boolean = false, expected: String? = null): Nothing {
         if (reportErrors) {
             val t = current()
-            val es = if(expected != null) {
-                val ns = if(not) "not " else ""
+            val es = if (expected != null) {
+                val ns = if (not) "not " else ""
                 "; expected $ns${expected}"
-            } else { "" }
+            } else {
+                ""
+            }
             Throwable().printStackTrace()
             scope.reportFatal(lexer.formatError("Unexpected token: '${t.value}' (${t.type})$es", t), true)
         } else {
@@ -81,13 +91,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun acceptDirective(value: String): Boolean {
-        if(accept(DIRECTIVE)) return current().value == value
+        if (accept(DIRECTIVE)) return current().value == value
         return false
     }
 
     private fun expectDirectiveNext(value: String): Token {
         val t = expectNext(DIRECTIVE)
-        if(t.value != value) unexpected(expected = value)
+        if (t.value != value) unexpected(expected = value)
         return t
     }
 
@@ -118,11 +128,12 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseAtom(): ExprST = when {
         accept(INT) -> parseInt()
-        accept(IDENT) -> when(current().value) {
+        accept(IDENT) -> when (current().value) {
             "true" -> BoolST(true).also { next() }
             "false" -> BoolST(false).also { next() }
             else -> parseIdent()
         }
+
         acceptNext(POS) -> PosST
         acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
         else -> unexpected()
@@ -140,15 +151,15 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun parseUnary(): ExprST {
-        if(accept(SUB)) {
+        if (accept(SUB)) {
             val ops = mutableListOf<UnaryOP>()
-            while(accept(SUB)) {
+            while (accept(SUB)) {
                 ops += parseUnaryOp()
                 next()
             }
 
             var ret = parsePower()
-            for(i in (ops.size - 1)..0) {
+            for (i in (ops.size - 1)..0) {
                 ret = UnaryST(ops[i], ret)
             }
 
@@ -185,7 +196,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun parseBinary(next: () -> ExprST, vararg types: TokenType): ExprST {
         var ret = next()
 
-        while(more() && accept(*types)) {
+        while (more() && accept(*types)) {
             val op = parseBinaryOp()
             this.next()
             ret = BinaryST(op, ret, next())
@@ -222,9 +233,9 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
         expectNext(LPAREN)
         val args = mutableListOf<ExprST>()
-        while(more() && !accept(RPAREN)) {
+        while (more() && !accept(RPAREN)) {
             args += parseExpr()
-            if(accept(COMMA)) next()
+            if (accept(COMMA)) next()
             else expect(RPAREN)
         }
         expectNext(RPAREN)
@@ -232,68 +243,69 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return MacroCallST(name, args)
     }
 
-    private fun parseMacro(): MacroST {
+    private fun parseMacro() = pushScope() {
         expectDirectiveNext("macro")
 
         val name = parseIdent()
 
         expectNext(LPAREN)
         val params = mutableListOf<String>()
-        while(more() && !accept(RPAREN)) {
+        while (more() && !accept(RPAREN)) {
             params += expectNext(IDENT).value
-            if(accept(COMMA)) next()
+            if (accept(COMMA)) next()
             else expect(RPAREN)
         }
         expectNext(RPAREN)
 
         expectNext(LBRACE)
         val body = mutableListOf<Node>()
-        while(more() && !accept(RBRACE)) {
+        while (more() && !accept(RBRACE)) {
             body += parse2()
         }
         expectNext(RBRACE)
 
-        return MacroST(name, params, body, Scope(fileScope))
+        MacroST(name, params, body, it)
     }
 
-    private fun parseRepaet(): RepeatST {
+    private fun parseRepeat() = pushScope() {
         expectDirectiveNext("repeat")
 
         val count = parseExpr()
-        val iteratorName = if(acceptNext(COMMA)) parseIdent().value else "i"
+        val iteratorName = if (acceptNext(COMMA)) parseIdent().value else "i"
 
         val body = mutableListOf<Node>()
         expectNext(LBRACE)
-        while(more() && !accept(RBRACE)) body += parse2()
+        while (more() && !accept(RBRACE)) body += parse2()
         expectNext(RBRACE)
 
-        return RepeatST(count, iteratorName, body, Scope(fileScope))
+        RepeatST(count, iteratorName, body, it)
     }
 
     private fun parseRes(): ResST {
         expectDirectiveNext("res")
         val count = parseExpr()
-        val value = if(acceptNext(COMMA)) parseExpr() else IntST(0)
+        val value = if (acceptNext(COMMA)) parseExpr() else IntST(0)
         return ResST(count, value)
     }
 
     // TODO: think of a name for this
     private fun parse2(): Node {
-        if(acceptNext(IDENT)) {
+        if (acceptNext(IDENT)) {
             val st = parseWithRetry({
-                if(accept(LPAREN)) {
+                if (accept(LPAREN)) {
                     prev()
                     parseMacroCall()
                 } else {
                     throw ParseException()
                 }
             })
-            if(st != null) return st
+            if (st != null) return st
             prev()
         }
 
         return when {
             accept(LABEL) -> LabelST(expectNext(LABEL).value)
+            acceptDirective("repeat") -> parseRepeat()
             acceptDirective("res") -> parseRes()
             else -> parseExpr()
         }
@@ -302,16 +314,15 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     fun parse(): FileST {
         val includes = mutableListOf<IncludeST>()
         val body = mutableListOf<Node>()
-        while(more()) {
+        while (more()) {
             when {
                 acceptDirective("include") -> includes += parseInclude()
                 acceptDirective("define") -> body += parseDefine()
                 acceptDirective("macro") -> body += parseMacro()
-                acceptDirective("repeat") -> body += parseRepaet()
                 else -> body += parse2()
             }
         }
-        return FileST(lexer, includes, body, fileScope)
+        return FileST(lexer, includes, body, currentScope)
     }
 }
 

@@ -33,20 +33,19 @@ class Scope(private val parent: Scope? = null) {
 }
 
 
-class WithScopes(val scope: Scope) : ExtensionContext.AbstractElement(Key) {
+class WithScopes(scope: Scope) : ExtensionContext.AbstractElement(Key) {
     companion object Key : ExtensionContext.IKey<WithScopes>
 
     internal var currentScope = scope
-    internal val scopes = Stack<Scope>()
 }
 
 val WorkerScope.scope get() = withExt(WithScopes) { currentScope }
 
 suspend fun <T> WorkerScope.withScope(s: Scope, action: suspend (Scope) -> T): T = withExt(WithScopes) {
-    scopes.push(scope)
+    val os = currentScope
     currentScope = s
     val result = action(currentScope)
-    currentScope = scopes.pop()
+    currentScope = os
     result
 }
 
@@ -55,6 +54,7 @@ suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope = this.scope) 
 suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope = this.scope, wait: Boolean = true) = with(WithScopes) {
     val ws = this
     val binding = scope[name.value]
+
     val t = Throwable()
     if (binding == null) {
         if(wait) waitOn(name, NameBound::class) {
