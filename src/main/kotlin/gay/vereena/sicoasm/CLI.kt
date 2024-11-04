@@ -41,21 +41,19 @@ private class Build : CliktCommand(name = "build") {
 
         driver.enqueueWorker(parse(file, outFile))
 
-        with(driver) {
-            onNotify(TreeAssembled::class) { _, notif ->
-                val code = (notif as TreeAssembled).code
-                val dout = DataOutputStream(FileOutputStream(outFile))
-                code.forEach {
-                    if(bitWidth == 32) {
-                        dout.writeByte((it shr 24) and 0xFF)
-                        dout.writeByte((it shr 16) and 0xFF)
-                    }
-                    if(bitWidth >= 16) dout.writeByte((it shr 8) and 0xFF)
-                    dout.writeByte(it and 0xFF)
+        driver.onNotify(TreeAssembled::class) { _, notif ->
+            val code = (notif as TreeAssembled).code
+            val dout = DataOutputStream(FileOutputStream(outFile))
+            code.forEach {
+                if(bitWidth == 32) {
+                    dout.writeByte((it shr 24) and 0xFF)
+                    dout.writeByte((it shr 16) and 0xFF)
                 }
-                dout.flush()
-                dout.close()
+                if(bitWidth >= 16) dout.writeByte((it shr 8) and 0xFF)
+                dout.writeByte(it and 0xFF)
             }
+            dout.flush()
+            dout.close()
         }
 
         if(!driver.run()) exitProcess(1)
