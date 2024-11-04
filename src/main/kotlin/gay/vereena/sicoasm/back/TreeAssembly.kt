@@ -1,5 +1,7 @@
 package gay.vereena.sicoasm.back
 
+import kotlin.math.*
+
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.mid.*
@@ -35,7 +37,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             is UnaryST -> when(n.op) {
                 UnaryOP.NEG -> -eval(n.value)
                 UnaryOP.BIT_NOT -> eval(n.value).inv()
-                UnaryOP.NOT -> TODO()
+                UnaryOP.NOT -> ice()
             }
             is BinaryST -> when(n.op) {
                 BinaryOP.ADD -> eval(n.left) + eval(n.right)
@@ -43,20 +45,20 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
                 BinaryOP.MUL -> eval(n.left) * eval(n.right)
                 BinaryOP.DIV -> eval(n.left) / eval(n.right)
                 BinaryOP.MOD -> eval(n.left) % eval(n.right)
-                BinaryOP.POW -> TODO()
+                BinaryOP.POW -> eval(n.left).toDouble().pow(eval(n.right)).toInt()
                 BinaryOP.BIT_AND -> eval(n.left) and eval(n.right)
                 BinaryOP.BIT_OR -> eval(n.left) or eval(n.right)
                 BinaryOP.BIT_XOR -> eval(n.left) xor eval(n.right)
                 BinaryOP.SHL -> eval(n.left) shl eval(n.right)
                 BinaryOP.SHR -> eval(n.left) shr eval(n.right)
-                BinaryOP.EQ -> TODO()
-                BinaryOP.NE -> TODO()
-                BinaryOP.LT -> TODO()
-                BinaryOP.GT -> TODO()
-                BinaryOP.LTE -> TODO()
-                BinaryOP.GTE -> TODO()
-                BinaryOP.AND -> TODO()
-                BinaryOP.OR -> TODO()
+                BinaryOP.EQ -> ice()
+                BinaryOP.NE -> ice()
+                BinaryOP.LT -> ice()
+                BinaryOP.GT -> ice()
+                BinaryOP.LTE -> ice()
+                BinaryOP.GTE -> ice()
+                BinaryOP.AND -> ice()
+                BinaryOP.OR -> ice()
             }
             is PosST -> asm.pos()
             is ParenST -> eval(n.value)
@@ -70,7 +72,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
-        override suspend fun visitParen(n: ParenST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
             blockLabels = findLabels(n)
@@ -90,7 +92,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     println("final AST:\n${astToString(finalAst)}")
 
     val code = asm.assemble()
-    println(code.indices.joinToString(" ") { it.toString().padStart(2) })
-    println(code.joinToString(" ") { it.toString().padStart(2) })
+    println("i: " + code.indices.joinToString(" ") { it.toString().padStart(2) })
+    println("c: " + code.joinToString(" ") { it.toString().padStart(2) })
     notifyOf(ast, TreeAssembled(code))
 }

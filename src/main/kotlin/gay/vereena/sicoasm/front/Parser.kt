@@ -127,9 +127,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         else -> unexpected()
     }
 
+    private fun parsePower() = parseBinary(::parseAtom, POW)
+
     private fun parseUnaryOp(): UnaryOP {
         return when {
             accept(SUB) -> UnaryOP.NEG
+            accept(BIT_NOT) -> UnaryOP.BIT_NOT
+            accept(NOT) -> UnaryOP.NOT
             else -> ice()
         }
     }
@@ -142,14 +146,14 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
                 next()
             }
 
-            var ret = parseAtom()
+            var ret = parsePower()
             for(i in (ops.size - 1)..0) {
                 ret = UnaryST(ops[i], ret)
             }
 
             return ret
         }
-        return parseAtom()
+        return parsePower()
     }
 
     private fun parseBinaryOp(): BinaryOP {
@@ -158,6 +162,21 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             accept(SUB) -> BinaryOP.SUB
             accept(MUL) -> BinaryOP.MUL
             accept(DIV) -> BinaryOP.DIV
+            accept(MOD) -> BinaryOP.MOD
+            accept(POW) -> BinaryOP.POW
+            accept(BIT_AND) -> BinaryOP.BIT_AND
+            accept(BIT_OR) -> BinaryOP.BIT_OR
+            accept(BIT_XOR) -> BinaryOP.BIT_XOR
+            accept(SHL) -> BinaryOP.SHL
+            accept(SHR) -> BinaryOP.SHR
+            accept(EQ) -> BinaryOP.EQ
+            accept(NE) -> BinaryOP.NE
+            accept(LT) -> BinaryOP.LT
+            accept(GT) -> BinaryOP.GT
+            accept(LTE) -> BinaryOP.LTE
+            accept(GTE) -> BinaryOP.GTE
+            accept(AND) -> BinaryOP.AND
+            accept(OR) -> BinaryOP.OR
             else -> ice()
         }
     }
@@ -174,7 +193,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return ret
     }
 
-    private fun parseBinaryMul() = parseBinary(::parseUnary, MUL, DIV)
+    private fun parseBinaryMul() = parseBinary(::parseUnary, MUL, DIV, MOD)
     private fun parseBinaryAdd() = parseBinary(::parseBinaryMul, ADD, SUB)
     private fun parseBinaryShift() = parseBinary(::parseBinaryAdd, SHL, SHR)
     private fun parseBinaryComparison() = parseBinary(::parseBinaryShift, LT, GT, LTE, GTE)

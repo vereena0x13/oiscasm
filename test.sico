@@ -1,3 +1,4 @@
+/*
 include "test2.sico"
 
 
@@ -49,3 +50,7 @@ macro nop2() {
     t1 t1 l0
 l0:
 }
+*/
+
+
+

@@ -29,6 +29,9 @@ enum class TokenType {
     MOD,                    // %
     POW,                    // **
 
+    BIT_NOT,                // ~
+    NOT,                    // !
+
     BIT_AND,                // &
     BIT_OR,                 // |
     BIT_XOR,                // ^
@@ -216,6 +219,8 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                 }
                 '%' -> emit(MOD)
 
+                '~' -> emit(BIT_NOT)
+
                 '&' -> when {
                     accept('&') -> emit(AND)
                     else -> emit(BIT_AND)
@@ -243,7 +248,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                 }
                 '!' -> when {
                     accept('=') -> emit(NE)
-                    else -> unexpected(c.toString())
+                    else -> emit(NOT)
                 }
 
                 '?' -> emit(POS)
