@@ -1,0 +1,11 @@
+            0 0 start
+
+.define     NL 10
+
+t0:         0
+t1:         0
+
+start:      t0 t0 ?+1
+            t0 t0 start
+
+            NL

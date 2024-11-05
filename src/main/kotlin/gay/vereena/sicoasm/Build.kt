@@ -15,7 +15,7 @@ fun build(cfg: Config) {
         enqueueWorker(parse(cfg.inFile))
 
         onNotify<TreeAssembled> { _, notif ->
-            writeOutput(cfg.outFile, notif.code, cfg.bitWidth)
+            cfg.writeOutFile(notif.code)
         }
 
         if(!run()) exitProcess(1)

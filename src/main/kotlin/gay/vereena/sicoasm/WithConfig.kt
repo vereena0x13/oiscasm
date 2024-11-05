@@ -8,9 +8,9 @@ import gay.vereena.sicoasm.util.*
 
 data class Config(
     val inFile: File,
-    val outFile: File,
     val bitWidth: Int,
-    val debug: Boolean
+    val debug: Boolean,
+    val writeOutFile: (IntArray) -> Unit
 )
 
 

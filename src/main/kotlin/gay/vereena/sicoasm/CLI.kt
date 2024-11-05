@@ -29,13 +29,13 @@ private class Build : CliktCommand(name = "build") {
         .flag(default = false)
 
     override fun run() {
-        val cfg = Config(
+        build(Config(
             inFile,
-            outFile,
             bitWidth,
-            debug
-        )
-        build(cfg)
+            debug,
+        ) { code ->
+            writeOutput(outFile, code, bitWidth)
+        })
     }
 }
 
