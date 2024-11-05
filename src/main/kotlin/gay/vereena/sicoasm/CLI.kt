@@ -7,6 +7,8 @@ import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.*
 
+import gay.vereena.sicoasm.util.*
+
 
 private class CLI : NoOpCliktCommand() {
     override val printHelpOnEmptyArgs = true
