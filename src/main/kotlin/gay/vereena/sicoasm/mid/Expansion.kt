@@ -39,13 +39,18 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
                 withScope(Scope(scope)) {
                     n.args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                     labels = findLabels(macro)
-                    BlockST(macro.body.map { visit(it) }, scope).also { labels = null }
+                    BlockST(macro.body.map { visit(it) }.filter { it !is DefineST }, scope).also { labels = null }
                 }
             } else {
                 ws.reportFatal("Attempt to call non-macro value '$macro'", true)
             }
             notifyOf(n, MacroExpanded(macro, n, block))
             return block
+        }
+
+        override suspend fun visitDefine(n: DefineST) = n.also {
+            if(n.value is PosST) scope[n.name.value] = PosST
+            else scope[n.name.value] = IntST(evalExpr(n.value))
         }
 
         override suspend fun visitRepeat(n: RepeatST): Node {

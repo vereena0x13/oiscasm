@@ -255,7 +255,7 @@ fun astToString(n: Node): String {
                 level--
             }
             is MacroCallST -> {
-                emitln("macroCall(${n.name}):")
+                emitln("macroCall(${n.name})${if(n.args.isEmpty()) "" else ":"}")
                 level++
                     if(n.args.isNotEmpty()) {
                         indent()

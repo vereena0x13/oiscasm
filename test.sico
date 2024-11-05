@@ -52,7 +52,7 @@ l0:
 }
 */
 
-
+/*
 .macro clear(x) {
     .repeat 2 { x } ?+1
 }
@@ -68,3 +68,16 @@ l0:
 resx(1)
 resx(2)
 resx(3)
+*/
+
+
+.macro foo(n) {
+    .repeat n {
+        1 << i
+    }
+}
+
+.define X foo(4)
+
+X
+X
