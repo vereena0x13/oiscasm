@@ -8,8 +8,10 @@ data object EmptyST : Node()
 
 sealed class ExprST : Node()
 
-data object DeferredST : ExprST() {
-    val MAGIC_NUMBER = "D3F3553D".toLong(16).toInt()
+data class DeferredST(val pos: Int) : ExprST() {
+    companion object {
+        val MAGIC_NUMBER = "D3F3553D".toLong(16).toInt()
+    }
 }
 
 enum class UnaryOP {
@@ -67,7 +69,7 @@ data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: Lis
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
         is EmptyST      -> n
-        is DeferredST   -> n
+        is DeferredST   -> visitDeferred(n)
         is IntST        -> visitInt(n)
         is StringST     -> visitString(n)
         is IdentST      -> visitIdent(n)
@@ -89,7 +91,7 @@ interface ASTAdapter {
     }
 
     suspend fun visitExpr(n: ExprST): ExprST = when(n) {
-        is DeferredST   -> n
+        is DeferredST   -> visitDeferred(n)
         is IntST        -> visitInt(n)
         is StringST     -> visitString(n)
         is IdentST      -> visitIdent(n)
@@ -101,6 +103,7 @@ interface ASTAdapter {
         is ParenST      -> visitParen(n)
     }
 
+    suspend fun visitDeferred(n: DeferredST): ExprST    = n
     suspend fun visitInt(n: IntST): ExprST              = n
     suspend fun visitString(n: StringST): ExprST        = n
     suspend fun visitIdent(n: IdentST): ExprST          = n
@@ -145,7 +148,7 @@ fun astToString(n: Node): String {
 
     fun visit(n: Node) {
         when(n) {
-            is DeferredST -> emitln("deferred")
+            is DeferredST -> emitln("deferred(${n.pos})")
             is EmptyST -> emitln("empty")
             is IntST -> emitln("int(${n.value})")
             is StringST -> emitln("string(${n.value})")

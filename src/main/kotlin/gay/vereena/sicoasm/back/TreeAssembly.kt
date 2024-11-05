@@ -47,7 +47,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
                     override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
                 }
                 computeLaters += Pair(pos, replacer.visitExpr(n))
-                return DeferredST
+                return DeferredST(pos)
             }
         }
 
@@ -71,13 +71,21 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         override suspend fun visitFile(n: FileST): FileST {
             n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
+
             val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
+
             computeLaters.forEach {
                 val (pos, expr) = it
                 val value = eval(expr)
                 if(value is IntValue) asm.set(pos, value.value)
+
             }
-            return f
+
+            val replacer = object : ASTAdapter {
+                override suspend fun visitDeferred(n: DeferredST) = IntST(asm.get(n.pos))
+            }
+
+            return replacer.visitFile(f)
         }
 
         override suspend fun visitBool(n: BoolST) = ice()

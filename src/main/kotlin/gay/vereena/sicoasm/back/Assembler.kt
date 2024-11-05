@@ -37,6 +37,11 @@ class Assembler {
         return l
     }
 
+    fun get(pos: Int): Int {
+        assert(pos < code.size)
+        return code[pos]
+    }
+
     fun set(pos: Int, value: Int) {
         assert(pos < code.size)
         code[pos] = value
