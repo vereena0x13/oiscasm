@@ -252,15 +252,32 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     val start = pos
                     val col = col
 
+                    val sb = StringBuilder()
                     while (more() && peek() != '"' && peek() != '\n') {
-                        next()
-                        // TODO: escape sequences
+                        if(accept('\\')) {
+                            when {
+                                accept('\\') -> sb.append('\\')
+                                accept('"') -> sb.append('"')
+                                accept('b') -> sb.append(8.toChar())
+                                accept('f') -> sb.append(12.toChar())
+                                accept('n') -> sb.append('\n')
+                                accept('r') -> sb.append('\r')
+                                accept('t') -> sb.append(9.toChar())
+                                accept('u') -> {
+                                    val cb = StringBuilder()
+                                    (0..<4).forEach { _ -> cb.append(next()) }
+                                    sb.append(cb.toString().toInt(16).toChar())
+                                }
+                            }
+                        } else {
+                            sb.append(next())
+                        }
                     }
 
                     if (!accept('"')) throw LexException("Unclosed string")
 
                     val end = pos - 1
-                    emit(STRING, source.substring(start, end), col, Span(start, end - 1))
+                    emit(STRING, sb.toString(), col, Span(start, end - 1))
                 }
 
                 else -> when {
