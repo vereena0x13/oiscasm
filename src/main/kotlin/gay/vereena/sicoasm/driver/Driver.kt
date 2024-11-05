@@ -127,16 +127,7 @@ class Driver {
                             if (it is WorkerTerminated && it.stop) {
                                 state = State.STOPPED
                             } else {
-                                // TODO: can we generalize this? i.e. WithWorkerCompletion?
-                                val group = scope.extensions[WithWorkerGroup.Key]
-                                if (group != null) {
-                                    group.completed++
-                                    if (group.completed == group.total) {
-                                        if (group.ran) throw IllegalStateException()
-                                        group.ran = true
-                                        group.onComplete(driver)
-                                    }
-                                }
+                                scope.extensions[WithWorkerCompletion.Key]?.fn?.invoke(driver)
                             }
                             running.remove(job)
                             retired++
