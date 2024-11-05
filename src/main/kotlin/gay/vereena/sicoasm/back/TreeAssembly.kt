@@ -33,13 +33,31 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             }
         }
 
+        private val computeLaters = mutableListOf<Pair<Int, ExprST>>()
+
+        private suspend fun evalMaybeLater(n: ExprST): ExprST {
+            try {
+                val value = eval(n)
+                if(value is IntValue) asm.emit(value.value)
+                return value.toAST()
+            } catch(_ : ComputeLater) {
+                val pos = asm.pos()
+                asm.emit(DeferredST.MAGIC_NUMBER)
+                val replacer = object : ASTAdapter {
+                    override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
+                }
+                computeLaters += Pair(pos, replacer.visitExpr(n))
+                return DeferredST
+            }
+        }
+
         private suspend fun eval(n: ExprST) = eval(n, evalCtx)
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitUnary(n: UnaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST() // NOTE TODO: this is gross and might not be entirely correct
-        override suspend fun visitBinary(n: BinaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST() // NOTE TODO: this is gross and might not be entirely correct
+        override suspend fun visitUnary(n: UnaryST) = evalMaybeLater(n)
+        override suspend fun visitBinary(n: BinaryST) = evalMaybeLater(n)
         override suspend fun visitPos(n: PosST) = asm.pos().let { asm.emit(it); IntST(it) }
         override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
 
@@ -53,7 +71,13 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         override suspend fun visitFile(n: FileST): FileST {
             n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
-            return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
+            val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
+            computeLaters.forEach {
+                val (pos, expr) = it
+                val value = eval(expr)
+                if(value is IntValue) asm.set(pos, value.value)
+            }
+            return f
         }
 
         override suspend fun visitBool(n: BoolST) = ice()

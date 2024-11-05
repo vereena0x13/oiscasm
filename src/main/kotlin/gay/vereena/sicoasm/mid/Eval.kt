@@ -57,13 +57,22 @@ interface EvalContext {
     fun labelAddr(name: String): Int?
 }
 
+data object ComputeLater : Throwable() {
+    private fun readResolve(): Any = ComputeLater
+}
+
 suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithScopes) {
     return when(n) {
+        is DeferredST -> ice()
         is IntST -> IntValue(n.value)
         is StringST -> StringValue(n.value)
         is IdentST -> eval(lookupBinding(n.value).value as ExprST, ctx) // NOTE TODO: don't just cast to ExprST
         is BoolST -> BoolValue(n.value)
-        is LabelRefST -> TODO()
+        is LabelRefST -> {
+            val addr = ctx!!.labelAddr(n.value)
+            if(addr != null) return IntValue(addr)
+            throw ComputeLater
+        }
         is UnaryST -> when(n.op) {
             UnaryOP.NEG -> IntValue(-eval(n.value, ctx).checkInt())
             UnaryOP.BIT_NOT -> IntValue(eval(n.value, ctx).checkInt().inv())

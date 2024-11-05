@@ -37,6 +37,11 @@ class Assembler {
         return l
     }
 
+    fun set(pos: Int, value: Int) {
+        assert(pos < code.size)
+        code[pos] = value
+    }
+
     fun assemble(): IntArray {
         //println(patches.joinToString(", "))
         //println(labels.joinToString(", "))
