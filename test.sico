@@ -53,6 +53,7 @@ l0:
 */
 
 
+/*
 .macro resx(x) {
     .repeat 2 {
         .res 2, 1 << x
@@ -62,10 +63,11 @@ l0:
 
 resx(1)
 resx(2)
+*/
 
 
-
-//.if true 0
+.if 1 > 2 42
+.if 2 > 1 24
 
 
 

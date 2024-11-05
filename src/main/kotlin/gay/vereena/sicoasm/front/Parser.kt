@@ -77,7 +77,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun acceptDirective(value: String) = accept(DIRECTIVE) && current().value == value
 
-    private fun acceptDirectiveNext(value: String) = accept(DIRECTIVE) && next().value == value
+    private fun acceptDirectiveNext(value: String): Boolean {
+        if(acceptDirective(value)) {
+            next()
+            return true
+        }
+        return false
+    }
 
     private fun expectDirectiveNext(value: String): Token {
         val t = expectNext(DIRECTIVE)

@@ -29,7 +29,11 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             if(labels?.contains(n.value) == true) LabelRefST(n.value)
             else lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
 
-        override suspend fun visitIf(n: IfST) = TODO() // NOTE: we need to be able to evaluate boolean expressions...
+        override suspend fun visitIf(n: IfST) = when {
+            eval(n.cond, null).check<BoolValue>().value -> n.then
+            n.otherwise != null -> n.otherwise
+            else -> EmptyST
+        }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
             val macro = lookupBinding(n.name).value
@@ -41,7 +45,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
                 withScope(Scope(scope)) {
                     n.args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                     labels = findLabels(macro)
-                    BlockST(macro.body.map { visit(it) }.filter { it !is DefineST }, scope).also { labels = null }
+                    BlockST(macro.body.map { visit(it) }.filter { it !is DefineST && it !is EmptyST }, scope).also { labels = null }
                 }
             } else {
                 ws.reportFatal("Attempt to call non-macro value '$macro'", true)
@@ -60,7 +64,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             return BlockST((0..<count).flatMap { i ->
                 withScope(Scope(scope)) {
                     if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)
-                    n.body.map { visit(it) }
+                    n.body.map { visit(it) }.filter { it !is EmptyST }
                 }
             }, scope)
         }

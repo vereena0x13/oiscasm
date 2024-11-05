@@ -42,17 +42,19 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
             blockLabels = findLabels(n)
-            BlockST(n.values.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
+            BlockST(n.values.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }.toList(), n.scope)
                 .also { popLabels(); blockLabels = null }
         }
 
+        override suspend fun visitIf(n: IfST) = ice()
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitDefine(n: DefineST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
+        override suspend fun visitRepeat(n: RepeatST) = ice()
 
         override suspend fun visitFile(n: FileST): FileST {
             n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
-            return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST }.toList(), n.scope)
+            return FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }.toList(), n.scope)
         }
     }
 

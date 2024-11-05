@@ -5,6 +5,7 @@ import gay.vereena.sicoasm.mid.*
 
 
 sealed class Node : WorkUnit
+data object EmptyST : Node()
 sealed class ExprST : Node()
 
 enum class UnaryOP {
@@ -61,6 +62,7 @@ data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: Lis
 
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
+        is EmptyST -> n
         is IntST -> visitInt(n)
         is StringST -> visitString(n)
         is IdentST -> visitIdent(n)
@@ -124,6 +126,7 @@ fun astToString(n: Node): String {
 
     fun visit(n: Node) {
         when(n) {
+            is EmptyST -> emitln("empty")
             is IntST -> emitln("int(${n.value})")
             is StringST -> emitln("string(${n.value})")
             is IdentST -> emitln("ident(${n.value})")
