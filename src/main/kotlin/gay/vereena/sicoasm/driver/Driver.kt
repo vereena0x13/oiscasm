@@ -6,14 +6,13 @@ import kotlinx.coroutines.*
 import gay.vereena.sicoasm.util.*
 
 
-interface WorkUnit
 interface Notification
 
 class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
     companion object Key : ExtensionContext.IKey<WithDriver>
 }
 
-suspend fun WorkerScope.waitOn(value: WorkUnit, notif: KClass<out Notification>, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
+suspend fun WorkerScope.waitOn(value: Any, notif: KClass<out Notification>, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
     val st = Thread.currentThread().stackTrace.drop(1)
     suspendCancellableCoroutine {
         val roe = {
@@ -28,9 +27,9 @@ suspend fun WorkerScope.waitOn(value: WorkUnit, notif: KClass<out Notification>,
     }
 }
 
-fun WorkerScope.notifyOf(value: WorkUnit, notif: Notification) = withExt(WithDriver) { driver.notifyOf(value, notif) }
+fun WorkerScope.notifyOf(value: Any, notif: Notification) = withExt(WithDriver) { driver.notifyOf(value, notif) }
 
-inline fun <reified T: Notification> WorkerScope.onNotify(crossinline it: (WorkUnit, T) -> Unit) = withExt(WithDriver) { driver.onNotify(it) }
+inline fun <reified T: Notification> WorkerScope.onNotify(crossinline it: (Any, T) -> Unit) = withExt(WithDriver) { driver.onNotify(it) }
 
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) { driver.reportError(e) }
 
@@ -49,7 +48,7 @@ class Driver {
         STOPPED
     }
 
-    private data class NotificationKey(val value: WorkUnit, val notif: KClass<out Notification>)
+    private data class NotificationKey(val value: Any, val notif: KClass<out Notification>)
 
 
     private val driverExtension         = WithDriver(this)
@@ -59,7 +58,7 @@ class Driver {
     private val runQueue                = ArrayDeque<WorkerContinuation>()
     private val running                 = mutableListOf<Job>()
 
-    private val notificationCallbacks   = mutableMapOf<KClass<out Notification>, MutableList<(WorkUnit, Notification) -> Unit>>()
+    private val notificationCallbacks   = mutableMapOf<KClass<out Notification>, MutableList<(Any, Notification) -> Unit>>()
 
     private var errors                  = 0
     private var waits                   = 0
@@ -71,7 +70,7 @@ class Driver {
     }
 
 
-    fun waitOn(value: WorkUnit, notif: KClass<out Notification>, it: WorkerContinuation, orElse: () -> Unit) {
+    fun waitOn(value: Any, notif: KClass<out Notification>, it: WorkerContinuation, orElse: () -> Unit) {
         waits++
         val key = NotificationKey(value, notif)
         val waiters = when (val waiters = blocked[key]) {
@@ -81,7 +80,7 @@ class Driver {
         waiters += Pair(it, orElse)
     }
 
-    fun notifyOf(value: WorkUnit, notif: Notification) {
+    fun notifyOf(value: Any, notif: Notification) {
         notifies++
         notificationCallbacks[notif::class]?.forEach { it(value, notif) }
         val key = NotificationKey(value, notif::class)
@@ -90,11 +89,11 @@ class Driver {
         waiters.clear()
     }
 
-    inline fun <reified T: Notification> onNotify(crossinline it: (WorkUnit, T) -> Unit) {
+    inline fun <reified T: Notification> onNotify(crossinline it: (Any, T) -> Unit) {
         onNotify(T::class) { wu, n -> it(wu, n as T) }
     }
 
-    fun onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) {
+    fun onNotify(notif: KClass<out Notification>, it: (Any, Notification) -> Unit) {
         if(notificationCallbacks[notif] == null) notificationCallbacks[notif] = mutableListOf(it)
         else notificationCallbacks[notif]!! += it
     }

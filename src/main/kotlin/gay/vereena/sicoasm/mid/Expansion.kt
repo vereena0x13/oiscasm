@@ -16,7 +16,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
 
         override suspend fun visitIdent(n: IdentST) = when {
             labels?.contains(n.value) == true -> LabelRefST(n.value).also { println("labels contains $n") }
-            else -> lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
+            else -> lookupBinding(n.value).value as ExprST // TODO: don't just cast to ExprST
         }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitIf(n: IfST) = when {
@@ -26,7 +26,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
-            val macro = lookupBinding(n.name).value
+            val macro = lookupBinding(n.name.value).value
             val block = if (macro is MacroST) {
                 if (n.args.size != macro.params.size) ws.reportFatal(
                     "Macro '${n.name.value}' expects ${macro.params.size} arguments; found ${n.args.size}",

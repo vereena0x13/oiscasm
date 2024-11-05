@@ -56,7 +56,7 @@ suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithSco
     return when(n) {
         is IntST -> IntValue(n.value)
         is StringST -> StringValue(n.value)
-        is IdentST -> eval(lookupBinding(n).value as ExprST, pos) // NOTE TODO: don't just cast to ExprST
+        is IdentST -> eval(lookupBinding(n.value).value as ExprST, pos) // NOTE TODO: don't just cast to ExprST
         is BoolST -> BoolValue(n.value)
         is LabelRefST -> TODO()
         is UnaryST -> when(n.op) {

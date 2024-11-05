@@ -1,10 +1,9 @@
 package gay.vereena.sicoasm.front
 
-import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
 
 
-sealed class Node : WorkUnit
+sealed class Node
 data object EmptyST : Node()
 sealed class ExprST : Node()
 

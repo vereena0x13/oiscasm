@@ -49,12 +49,11 @@ suspend fun <T> WorkerScope.withScope(s: Scope, action: suspend (Scope) -> T): T
     result
 }
 
-suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope = this.scope) = with(WithScopes) { lookupBinding(name, scope, true)!! }
+suspend fun WorkerScope.lookupBinding(name: String, scope: Scope = this.scope) = with(WithScopes) { lookupBinding(name, scope, true)!! }
 
-suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope = this.scope, wait: Boolean = true) = with(WithScopes) {
+suspend fun WorkerScope.lookupBinding(name: String, scope: Scope = this.scope, wait: Boolean = true) = with(WithScopes) {
     val ws = this
-    val binding = scope[name.value]
-
+    val binding = scope[name]
     val t = Throwable()
     if (binding == null) {
         if(wait) waitOn(name, NameBound::class) {
@@ -63,7 +62,7 @@ suspend fun WorkerScope.lookupBinding(name: IdentST, scope: Scope = this.scope, 
         }
         else return@with null
     }
-    scope[name.value]!!
+    scope[name]!!
 }
 
 
