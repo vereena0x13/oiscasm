@@ -55,7 +55,8 @@ fun applyBitWidth(x: Int, bitWidth: Int) = when(bitWidth) {
 fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) {
     val dout = DataOutputStream(FileOutputStream(outFile))
     xs.forEach {
-        val x = applyBitWidth(it, bitWidth)
+        val x = applyBitWidth(it, bitWidth) // NOTE TODO: this is not needed, right? -- waiting for the assert to fail... ig...
+        assert(x == it)
         if(bitWidth == 32) {
             dout.writeByte((x shr 24) and 0xFF)
             dout.writeByte((x shr 16) and 0xFF)
