@@ -54,10 +54,10 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         // NOTE TODO: can't support ComputeLater; do we care?
         override suspend fun visitRepeat(n: RepeatST): Node {
             val count = eval(n.count, null).checkInt()
-            return BlockST((0..<count).flatMap { i ->
+            return BlockST((0..<count).map { i ->
                 withScope(Scope(scope)) {
                     if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)
-                    n.body.map { visit(it) }.filter { it !is EmptyST }
+                    visit(n.body)
                 }
             }, scope).also { notifyOf(n, Expanded) }
         }

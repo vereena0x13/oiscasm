@@ -209,13 +209,17 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseInclude() = IncludeST(expectDirectiveNext("include").let { parseString().value })
 
-    private fun parseBlock(): BlockST {
+    private fun parseBlockRaw(): List<Node> {
         expectNext(LBRACE)
+        val xs = mutableListOf<Node>()
+        while (more() && !accept(RBRACE)) xs += parse2()
+        expectNext(RBRACE)
+        return xs
+    }
+
+    private fun parseBlock(): BlockST {
         val (xs, scope) = pushScope {
-            val xs = mutableListOf<Node>()
-            while(more() && !accept(RBRACE)) xs += parse2()
-            expectNext(RBRACE)
-            Pair(xs, currentScope)
+            Pair(parseBlockRaw(), currentScope)
         }
         return BlockST(xs, scope)
     }
@@ -256,27 +260,16 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
         expectNext(RPAREN)
 
-        expectNext(LBRACE)
-        val body = mutableListOf<Node>()
-        while (more() && !accept(RBRACE)) {
-            body += parse2()
-        }
-        expectNext(RBRACE)
+        val body = parseBlockRaw()
 
         MacroST(name, params, body, it)
     }
 
     private fun parseRepeat() = pushScope {
         expectDirectiveNext("repeat")
-
         val count = parseExpr()
         val iteratorName = if (acceptNext(COMMA)) parseIdent().value else "i"
-
-        val body = mutableListOf<Node>()
-        expectNext(LBRACE)
-        while (more() && !accept(RBRACE)) body += parse2()
-        expectNext(RBRACE)
-
+        val body = parse2()
         RepeatST(count, iteratorName, body, it)
     }
 
@@ -284,7 +277,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         expectDirectiveNext("res")
         val count = parseExpr()
         val value = if (acceptNext(COMMA)) parseExpr() else IntST(0)
-        return RepeatST(count, null, listOf(value), currentScope)
+        return RepeatST(count, null, value, currentScope)
     }
 
     private inline fun parseIfLike(
