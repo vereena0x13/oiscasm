@@ -212,17 +212,6 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseInclude() = IncludeST(expectDirectiveNext("include").let { parseString().value })
 
-    private fun parseBlock(): BlockST {
-        expectNext(LBRACE)
-        val (xs, scope) = pushScope {
-            val xs = mutableListOf<Node>()
-            while(more() && !accept(RBRACE)) xs += parse2()
-            expectNext(RBRACE)
-            Pair(xs, currentScope)
-        }
-        return BlockST(xs, scope)
-    }
-
     private fun parseDefine(): DefineST {
         expectDirectiveNext("define")
         val name = parseIdent()
@@ -290,21 +279,32 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return RepeatST(count, null, listOf(value), currentScope)
     }
 
-    private inline fun parseIfLike(
-        directive: String,
-        condfn: () -> ExprST = { parseExpr() },
-        thenfn: () -> Node = { parse2() },
-        otherwisefn: () -> Node? = { parse2() }
-    ): IfST {
-        expectDirectiveNext(directive)
-        val cond = condfn()
-        val then = thenfn()
-        val otherwise = if(acceptDirectiveNext("else")) otherwisefn() else null
+    private fun parseIf(): IfST {
+        expectDirectiveNext("if")
+        val cond = parseExpr()
+        val then = parse2()
+        val otherwise = if(acceptDirectiveNext("else")) parse2() else null
         return IfST(cond, then, otherwise)
     }
 
-    private fun parseIf() = parseIfLike("if")
-    private fun parseIfBlank() = parseIfLike("ifblank", { BlankST(parseExpr()) })
+    private fun parseBlock(): BlockST {
+        expectNext(LBRACE)
+        val (xs, scope) = pushScope {
+            val xs = mutableListOf<Node>()
+            while(more() && !accept(RBRACE)) xs += parse2()
+            expectNext(RBRACE)
+            Pair(xs, currentScope)
+        }
+        return BlockST(xs, scope)
+    }
+
+    private fun parseIfBlank(): IfST {
+        expectDirectiveNext("ifblank")
+        val cond = BlankST(parseExpr())
+        val then = parse2()
+        val otherwise = if(acceptDirectiveNext("else")) parse2() else null
+        return IfST(cond, then, otherwise)
+    }
 
     // TODO: think of a name for this
     private fun parse2(): Node {
