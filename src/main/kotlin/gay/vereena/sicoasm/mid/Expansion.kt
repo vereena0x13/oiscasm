@@ -15,7 +15,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         var labels: Set<String>? = null
 
         override suspend fun visitIdent(n: IdentST) = when {
-            labels?.contains(n.value) == true -> LabelRefST(n.value).also { println("labels contains $n") }
+            labels?.contains(n.value) == true -> LabelRefST(n.value)
             else -> lookupBinding(n.value).value as ExprST // TODO: don't just cast to ExprST
         }.also { notifyOf(n, Expanded) }
 

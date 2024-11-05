@@ -8,6 +8,8 @@ import gay.vereena.sicoasm.util.*
 
 class TreeAssembled(val code: IntArray) : Notification
 
+private data class DeferredComputation(val pos: Int, val expr: ExprST, val labels: Map<String, Label>)
+
 fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.scope)) {
     val asm = Assembler()
 
@@ -33,21 +35,21 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             }
         }
 
-        private val computeLaters = mutableListOf<Pair<Int, ExprST>>()
+        private val computeLaters = mutableListOf<DeferredComputation>()
 
         private suspend fun evalMaybeLater(n: ExprST): ExprST {
-            try {
+            return try {
                 val value = eval(n)
                 if(value is IntValue) asm.emit(value.value)
-                return value.toAST()
-            } catch(_ : ComputeLater) {
+                value.toAST()
+            } catch(_: ComputeLater) {
                 val pos = asm.pos()
                 asm.emit(DeferredST.MAGIC_NUMBER)
                 val replacer = object : ASTAdapter {
                     override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
                 }
-                computeLaters += Pair(pos, replacer.visitExpr(n))
-                return DeferredST(pos)
+                computeLaters += DeferredComputation(pos, replacer.visitExpr(n), labels)
+                DeferredST(pos)
             }
         }
 
@@ -75,16 +77,18 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
 
             computeLaters.forEach {
-                val (pos, expr) = it
-                val value = eval(expr)
-                if(value is IntValue) asm.set(pos, value.value)
-
+                val evalCtx = object : EvalContext {
+                    override fun pos() = ice()
+                    override fun labelAddr(name: String) = it.labels[name]!!.addr!!
+                }
+                val value = eval(it.expr, evalCtx)
+                asm.set(it.pos, value.checkInt())
             }
 
+            // NOTE: we don't really need to do this, but I wanted to. Bite me.
             val replacer = object : ASTAdapter {
                 override suspend fun visitDeferred(n: DeferredST) = IntST(asm.get(n.pos))
             }
-
             return replacer.visitFile(f)
         }
 

@@ -57,7 +57,7 @@ interface EvalContext {
     fun labelAddr(name: String): Int?
 }
 
-data object ComputeLater : Throwable() {
+data object ComputeLater : Exception() {
     private fun readResolve(): Any = ComputeLater
 }
 
