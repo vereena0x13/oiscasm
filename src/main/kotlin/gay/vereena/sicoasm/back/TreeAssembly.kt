@@ -102,7 +102,12 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     println("final AST:\n${astToString(finalAst)}")
 
     val code = asm.assemble()
-    println("i: " + code.indices.joinToString(" ") { it.toString().padStart(2) })
-    println("c: " + code.joinToString(" ") { it.toString().padStart(2) })
+    if(false) {
+        val maxLen = code.maxOfOrNull { it.toString().length }!!
+        println("i: " + code.indices.joinToString(" ") { it.toString().padStart(maxLen) })
+        println("c: " + code.joinToString(" ") { it.toString().padStart(maxLen) })
+    } else {
+        println(code.joinToString(", "))
+    }
     notifyOf(ast, TreeAssembled(code))
 }
