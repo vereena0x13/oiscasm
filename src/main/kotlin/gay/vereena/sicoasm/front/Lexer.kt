@@ -115,6 +115,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     private fun current(): String = source.substring(start, pos)
 
     private fun accept(vararg valid: Char): Boolean {
+        if(!more()) return false
         for (c in valid) {
             if (peek() == c) {
                 next()
@@ -125,6 +126,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     }
 
     private fun acceptSeq(seq: String): Boolean {
+        if(!more()) return false
         val pos = pos
         val col = col
         for (i in seq.indices) {
