@@ -77,17 +77,13 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         }
 
         override suspend fun visitDefine(n: DefineST) = n.also {
-            println(n)
             scope[n.name.value] = n.value
             notifyOf(Pair(n.name, scope), NameBound)
         }
 
-        override suspend fun visitMacro(n: MacroST): Node {
+        override suspend fun visitMacro(n: MacroST) = n.also {
             scope[n.name.value] = n
-            return withScope(n.scope) {
-                n.body.filterIsInstance<LabelST>().forEach { visitLabel(it) }
-                n
-            }.also { notifyOf(Pair(n.name, n.scope), NameBound) }
+            notifyOf(Pair(n.name, scope), NameBound)
         }
 
         override suspend fun visitIf(n: IfST) = n

@@ -258,12 +258,12 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return xs
     }
 
-    private fun parseMacro() = pushScope {
+    private fun parseMacro(): MacroST {
         expectDirectiveNext("macro")
         val name = parseIdent()
         val params = if(accept(LPAREN)) parseParamList() else listOf()
         val body = parseBlockRaw()
-        MacroST(name, params, body, it)
+        return MacroST(name, params, body)
     }
 
     private fun parseRepeat() = pushScope {
@@ -271,14 +271,14 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         val count = parseExpr()
         val iteratorName = if (acceptNext(COMMA)) parseIdent().value else "i"
         val body = parse2()
-        RepeatST(count, iteratorName, body, it)
+        RepeatST(count, iteratorName, body)
     }
 
     private fun parseRes(): RepeatST {
         expectDirectiveNext("res")
         val count = parseExpr()
         val value = if (acceptNext(COMMA)) parseExpr() else IntST(0)
-        return RepeatST(count, null, value, currentScope)
+        return RepeatST(count, null, value)
     }
 
     private inline fun parseIfLike(

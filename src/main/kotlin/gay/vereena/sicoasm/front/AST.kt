@@ -63,8 +63,8 @@ data class IfST(val cond: ExprST, val then: Node, val otherwise: Node? = null): 
 data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
-data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>, val scope: Scope) : Node()
-data class RepeatST(val count: ExprST, val iteratorName: String?, val body: Node, val scope: Scope) : Node()
+data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>) : Node()
+data class RepeatST(val count: ExprST, val iteratorName: String?, val body: Node) : Node()
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
@@ -128,8 +128,8 @@ interface ASTAdapter {
     suspend fun visitMacroCall(n: MacroCallST): Node    = MacroCallST(n.name, n.args.map { visitExpr(it) })
     suspend fun visitBlock(n: BlockST): Node            = BlockST(n.values.map { visit(it) }, n.scope)
     suspend fun visitDefine(n: DefineST): Node          = DefineST(n.name, visitExpr(n.value))
-    suspend fun visitMacro(n: MacroST): Node            = MacroST(n.name, n.params, n.body.map { visit(it) }, n.scope)
-    suspend fun visitRepeat(n: RepeatST): Node          = RepeatST(visitExpr(n.count), n.iteratorName, visit(n.body), n.scope)
+    suspend fun visitMacro(n: MacroST): Node            = MacroST(n.name, n.params, n.body.map { visit(it) })
+    suspend fun visitRepeat(n: RepeatST): Node          = RepeatST(visitExpr(n.count), n.iteratorName, visit(n.body))
     suspend fun visitInclude(n: IncludeST): Node        = n
     suspend fun visitFile(n: FileST): FileST            = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
 }
@@ -140,7 +140,7 @@ suspend fun findLabels(n: Node): Set<String> {
     val finder = object : ASTAdapter {
         override suspend fun visitLabel(n: LabelST)     = n.also { labels += n.value }
         override suspend fun visitIf(n: IfST)           = IfST(n.cond, visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
-        override suspend fun visitRepeat(n: RepeatST)   = RepeatST(n.count, n.iteratorName, visit(n.body), n.scope)
+        override suspend fun visitRepeat(n: RepeatST)   = RepeatST(n.count, n.iteratorName, visit(n.body))
         override suspend fun visitMacro(n: MacroST)     = n.also { n.body.forEach { visit(it) } }
     }
     finder.visit(n)
