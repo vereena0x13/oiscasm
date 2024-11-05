@@ -23,29 +23,27 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     fun popLabels() { labels = labelsStack.pop() }
 
     val treeAssembler = object : ASTAdapter {
-        var blockLabels: Set<String>? = null
-
         suspend fun eval(n: ExprST) = eval(n) { asm.pos() }
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
-        override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
 
-        override suspend fun visitUnary(n: UnaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
-        override suspend fun visitBinary(n: BinaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
-        override suspend fun visitPos(n: PosST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
+        override suspend fun visitUnary(n: UnaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST() // NOTE TODO: this is gross and might not be entirely correct
+        override suspend fun visitBinary(n: BinaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST() // NOTE TODO: this is gross and might not be entirely correct
+        override suspend fun visitPos(n: PosST) = asm.pos().let { asm.emit(it); IntST(it) }
         override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
 
         override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
 
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
-            blockLabels = findLabels(n)
             BlockST(n.values.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }.toList(), n.scope)
-                .also { popLabels(); blockLabels = null }
+                .also { popLabels()}
         }
 
+        override suspend fun visitBool(n: BoolST) = ice()
+        override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitIf(n: IfST) = ice()
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitDefine(n: DefineST) = ice()

@@ -5,17 +5,6 @@ import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 
 
-suspend fun findLabels(n: Node): Set<String> {
-    val labels = mutableSetOf<String>()
-    val finder = object : ASTAdapter {
-        override suspend fun visitLabel(n: LabelST) = n.also { labels += n.value }
-        override suspend fun visitMacro(n: MacroST) = n.also { n.body.forEach { visit(it) } }
-    }
-    finder.visit(n)
-    return labels.toSet()
-}
-
-
 data class MacroExpanded(val macro: MacroST, val call: MacroCallST, val result: Node) : Notification
 
 
