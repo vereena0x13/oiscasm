@@ -64,6 +64,7 @@ data object ComputeLater : Exception() {
 suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithScopes) {
     return when(n) {
         is DeferredST -> ice()
+        is EmptyExprST -> ice()
         is IntST -> IntValue(n.value)
         is StringST -> StringValue(n.value)
         is IdentST -> eval(lookupBinding(n.value).value as ExprST, ctx) // NOTE TODO: don't just cast to ExprST
@@ -116,5 +117,9 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
         }
         is PosST -> IntValue(ctx!!.pos())
         is ParenST -> eval(n.value, ctx)
+        is BlankST -> {
+            val value = if(n.value is IdentST) lookupBinding(n.value.value).value else n.value
+            BoolValue(value is EmptyExprST)
+        }
     }
 }

@@ -90,6 +90,9 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             return replacer.visitFile(f)
         }
 
+        override suspend fun visitEmpty(n: EmptyST) = ice()
+        override suspend fun visitEmptyExpr(n: EmptyExprST) = ice()
+        override suspend fun visitBlank(n: BlankST) = ice()
         override suspend fun visitDeferred(n: DeferredST) = ice()
         override suspend fun visitBool(n: BoolST) = ice()
         override suspend fun visitIdent(n: IdentST) = ice()

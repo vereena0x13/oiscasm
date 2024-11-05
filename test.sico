@@ -66,11 +66,15 @@ resx(2)
 */
 
 
-        1 2
-xs:     3 4
 
-.if xs > 1 42
+.macro foo(x, y) {
+    x
 
+    .if .blank(y) 42 .else y
+    .ifblank y 24 .else y+1
+}
 
+foo(4)
+foo(5, 6)
 
 

@@ -120,6 +120,12 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         })
     }
 
+    private fun parseBlank(): BlankST {
+        expectDirectiveNext("blank")
+        expectNext(LPAREN)
+        return BlankST(parseExpr()).also { expectNext(RPAREN) }
+    }
+
     private fun parseAtom() = when {
         accept(INT) -> parseInt()
         accept(IDENT) -> when (current().value) {
@@ -127,7 +133,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             "false" -> BoolST(false).also { next() }
             else -> parseIdent()
         }
-
+        acceptDirective("blank") -> parseBlank()
         acceptNext(POS) -> PosST
         acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
         else -> unexpected()
@@ -292,6 +298,14 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return BlockST(xs, scope)
     }
 
+    private fun parseIfBlank(): IfST {
+        expectDirectiveNext("ifblank")
+        val cond = BlankST(parseExpr())
+        val then = parse2()
+        val otherwise = if(acceptDirectiveNext("else")) parse2() else null
+        return IfST(cond, then, otherwise)
+    }
+
     // TODO: think of a name for this
     private fun parse2(): Node {
         if (acceptNext(IDENT)) {
@@ -315,6 +329,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             acceptDirective("repeat") -> parseRepeat()
             acceptDirective("res") -> parseRes()
             acceptDirective("if") -> parseIf()
+            acceptDirective("ifblank") -> parseIfBlank()
             else -> parseExpr()
         }
     }

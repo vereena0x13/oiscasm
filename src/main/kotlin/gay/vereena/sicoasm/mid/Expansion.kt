@@ -21,20 +21,25 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
 
         // NOTE TODO: can't support ComputeLater; do we care?
         override suspend fun visitIf(n: IfST) = when {
-            eval(n.cond, null).checkBool() -> n.then
-            n.otherwise != null -> n.otherwise
+            eval(n.cond, null).checkBool() -> visit(n.then)
+            n.otherwise != null -> visit(n.otherwise)
             else -> EmptyST
         }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
             val macro = lookupBinding(n.name.value).value
             val block = if (macro is MacroST) {
-                if (n.args.size != macro.params.size) ws.reportFatal(
+                if (n.args.size > macro.params.size) ws.reportFatal(
                     "Macro '${n.name.value}' expects ${macro.params.size} arguments; found ${n.args.size}",
                     true
                 )
+
+                val args = mutableListOf<ExprST>()
+                args.addAll(n.args)
+                while(args.size < macro.params.size) args += EmptyExprST
+
                 withScope(Scope(scope)) {
-                    n.args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
+                    args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                     labels = findLabels(macro)
                     BlockST(macro.body.map { visit(it) }.filter { it !is EmptyST }, scope).also { labels = null }
                 }

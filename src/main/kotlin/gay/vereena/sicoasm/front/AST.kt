@@ -8,6 +8,7 @@ sealed class Node
 data object EmptyST : Node()
 
 sealed class ExprST : Node()
+data object EmptyExprST : ExprST()
 
 data class DeferredST(val pos: Int, val expr: ExprST, val labels: Map<String, Label>) : ExprST() {
     companion object {
@@ -57,6 +58,7 @@ data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 data object PosST : ExprST()
 data class ParenST(val value: ExprST) : ExprST()
+data class BlankST(val value: ExprST) : ExprST()
 data class IfST(val cond: ExprST, val then: Node, val otherwise: Node? = null): Node()
 data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
@@ -69,7 +71,8 @@ data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: Lis
 
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
-        is EmptyST      -> n
+        is EmptyST      -> visitEmpty(n)
+        is EmptyExprST  -> visitEmptyExpr(n)
         is DeferredST   -> visitDeferred(n)
         is IntST        -> visitInt(n)
         is StringST     -> visitString(n)
@@ -81,6 +84,7 @@ interface ASTAdapter {
         is BinaryST     -> visitBinary(n)
         is PosST        -> visitPos(n)
         is ParenST      -> visitParen(n)
+        is BlankST      -> visitBlank(n)
         is IfST         -> visitIf(n)
         is BlockST      -> visitBlock(n)
         is MacroCallST  -> visitMacroCall(n)
@@ -92,6 +96,7 @@ interface ASTAdapter {
     }
 
     suspend fun visitExpr(n: ExprST): ExprST = when(n) {
+        is EmptyExprST  -> visitEmptyExpr(n)
         is DeferredST   -> visitDeferred(n)
         is IntST        -> visitInt(n)
         is StringST     -> visitString(n)
@@ -102,8 +107,11 @@ interface ASTAdapter {
         is BinaryST     -> visitBinary(n)
         is PosST        -> visitPos(n)
         is ParenST      -> visitParen(n)
+        is BlankST      -> visitBlank(n)
     }
 
+    suspend fun visitEmpty(n: EmptyST): Node            = n
+    suspend fun visitEmptyExpr(n: EmptyExprST): ExprST  = n
     suspend fun visitDeferred(n: DeferredST): ExprST    = n
     suspend fun visitInt(n: IntST): ExprST              = n
     suspend fun visitString(n: StringST): ExprST        = n
@@ -114,6 +122,7 @@ interface ASTAdapter {
     suspend fun visitBinary(n: BinaryST): ExprST        = BinaryST(n.op, visitExpr(n.left), visitExpr(n.right))
     suspend fun visitPos(n: PosST): ExprST              = n
     suspend fun visitParen(n: ParenST): ExprST          = ParenST(visitExpr(n.value))
+    suspend fun visitBlank(n: BlankST): ExprST          = BlankST(n.value)
     suspend fun visitLabel(n: LabelST): Node            = n
     suspend fun visitIf(n: IfST): Node                  = IfST(visitExpr(n.cond), visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
     suspend fun visitMacroCall(n: MacroCallST): Node    = MacroCallST(n.name, n.args.map { visitExpr(it) })
@@ -149,8 +158,9 @@ fun astToString(n: Node): String {
 
     fun visit(n: Node) {
         when(n) {
-            is DeferredST -> emitln("deferred(${n.pos})")
             is EmptyST -> emitln("empty")
+            is EmptyExprST -> emitln("empty_expr")
+            is DeferredST -> emitln("deferred(${n.pos})")
             is IntST -> emitln("int(${n.value})")
             is StringST -> emitln("string(${n.value})")
             is IdentST -> emitln("ident(${n.value})")
@@ -185,6 +195,13 @@ fun astToString(n: Node): String {
             is PosST -> emitln("pos")
             is ParenST -> {
                 emitln("paren:")
+                level++
+                indent()
+                visit(n.value)
+                level--
+            }
+            is BlankST -> {
+                emitln("blank:")
                 level++
                 indent()
                 visit(n.value)
