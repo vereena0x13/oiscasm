@@ -26,11 +26,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         private val evalCtx = object : EvalContext {
             override fun pos() = asm.pos()
-
-            override fun labelAddr(name: String): Int? {
-                val label = labels[name]
-                return label?.addr
-            }
+            override fun labelAddr(name: String) = labels[name]?.addr
         }
 
         private suspend fun eval(n: ExprST) = eval(n, evalCtx)
