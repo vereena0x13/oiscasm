@@ -66,6 +66,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         }
 
         override suspend fun visitDefine(n: DefineST) = n.also {
+            println("define $n")
             if(n.value is PosST) scope[n.name.value] = PosST
             else scope[n.name.value] = eval(n.value, null).toAST()
             notifyOf(Pair(n.name, scope), NameBound)

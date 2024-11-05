@@ -67,14 +67,7 @@ resx(2)
 
 
 
-.macro foo(x, y) {
-    x
 
-    .if .blank(y) 42 .else y
-    .ifblank y 24 .else y+1
-}
 
-foo(4)
-foo(5, 6)
 
 

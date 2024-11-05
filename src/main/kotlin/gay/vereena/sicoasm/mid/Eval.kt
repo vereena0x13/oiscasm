@@ -118,8 +118,8 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
         is PosST -> IntValue(ctx!!.pos())
         is ParenST -> eval(n.value, ctx)
         is BlankST -> {
-            val value = if(n.value is IdentST) lookupBinding(n.value.value).value else n.value
-            BoolValue(value is EmptyExprST)
+            val value = if(n.value is IdentST) scope[n.value.value]?.value else n.value
+            BoolValue(value == null || value is EmptyExprST)
         }
     }
 }
