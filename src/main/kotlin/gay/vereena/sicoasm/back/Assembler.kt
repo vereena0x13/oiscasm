@@ -11,7 +11,7 @@ class Assembler {
 
     private fun markPatch(l: Label) { patches += Patch(pos(), l.id) }
 
-    fun emit(x: Int) { code += x }
+    fun emit(x: Int) = pos().also { code += x }
 
     fun pos() = code.size
 

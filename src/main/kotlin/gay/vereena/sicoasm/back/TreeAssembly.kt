@@ -33,22 +33,21 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             }
         }
 
+        private suspend fun eval(n: ExprST) = eval(n, evalCtx)
+
         private suspend fun evalMaybeLater(n: ExprST): ExprST {
             return try {
                 val value = eval(n)
                 if(value is IntValue) asm.emit(value.value)
                 value.toAST()
             } catch(_: ComputeLater) {
-                val pos = asm.pos()
-                asm.emit(DeferredST.MAGIC_NUMBER)
+                val pos = asm.emit(DeferredST.MAGIC_NUMBER)
                 val replacer = object : ASTAdapter {
                     override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
                 }
                 DeferredST(pos, replacer.visitExpr(n), labels)
             }
         }
-
-        private suspend fun eval(n: ExprST) = eval(n, evalCtx)
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
@@ -64,6 +63,12 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             pushLabels()
             BlockST(n.values.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, scope)
                 .also { popLabels()}
+        }
+
+        override suspend fun visitDefine(n: DefineST) = n.also {
+            if(n.value is PosST) scope[n.name.value] = PosST
+            else scope[n.name.value] = eval(n.value, null).toAST()
+            notifyOf(Pair(n.name, scope), NameBound)
         }
 
         override suspend fun visitFile(n: FileST): FileST {
@@ -85,12 +90,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             return replacer.visitFile(f)
         }
 
-        override suspend fun visitDefine(n: DefineST) = n.also {
-            if(n.value is PosST) scope[n.name.value] = PosST
-            else scope[n.name.value] = eval(n.value, null).toAST()
-            notifyOf(Pair(n.name, scope), NameBound)
-        }
-
+        override suspend fun visitDeferred(n: DeferredST) = ice()
         override suspend fun visitBool(n: BoolST) = ice()
         override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitIf(n: IfST) = ice()
