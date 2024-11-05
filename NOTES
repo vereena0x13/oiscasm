@@ -5,8 +5,5 @@
     - rename to oiscasm
         - we could use this for not only SICO, but SUBLEQ or others too
             - would need (optional) negative number support for SUBLEQ
-    - .if, .else, .elseif, and friends for conditional assembly
     - .ident, etc.
         - to allow generating labels
-    - blank macro arguments
-        - macro can do .ifblank, etc. to conditionally use arguments if they are provided
