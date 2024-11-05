@@ -3,7 +3,7 @@ package gay.vereena.sicoasm.driver
 import gay.vereena.sicoasm.util.ExtensionContext
 
 
-class WorkerGroup(val onGroupComplete: (Driver) -> Unit) : WorkerCompletion() {
+class WithWorkerGroup(val onGroupComplete: (Driver) -> Unit) : WorkerCompletion() {
     private var total = 0
     private var completed = 0
 

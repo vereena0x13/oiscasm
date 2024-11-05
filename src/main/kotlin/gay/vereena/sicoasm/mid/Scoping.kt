@@ -56,7 +56,7 @@ suspend fun WorkerScope.lookupBinding(name: String, scope: Scope = this.scope, w
     val binding = scope[name]
     val t = Throwable()
     if (binding == null) {
-        if(wait) waitOn(name, NameBound::class) {
+        if(wait) waitOn<NameBound>(Pair(name, scope)) {
             t.printStackTrace()
             ws.reportError("Undeclared identifier: $name")
         }
@@ -73,12 +73,12 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
     val nameBinder = object : ASTAdapter {
         override suspend fun visitLabel(n: LabelST) = n.also {
             scope[n.value] = LabelRefST(n.value)
-            notifyOf(n, NameBound)
+            notifyOf(Pair(n, scope), NameBound)
         }
 
         override suspend fun visitDefine(n: DefineST) = n.also {
             scope[n.name.value] = n.value
-            notifyOf(n.name, NameBound)
+            notifyOf(Pair(n.name, scope), NameBound)
         }
 
         override suspend fun visitMacro(n: MacroST): Node {
@@ -86,7 +86,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
             return withScope(n.scope) {
                 n.body.filterIsInstance<LabelST>().forEach { visitLabel(it) }
                 n
-            }.also { notifyOf(n.name, NameBound) }
+            }.also { notifyOf(Pair(n.name, n.scope), NameBound) }
         }
 
         override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)

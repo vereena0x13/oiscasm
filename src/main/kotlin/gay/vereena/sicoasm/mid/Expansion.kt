@@ -47,7 +47,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         override suspend fun visitDefine(n: DefineST) = n.also {
             if(n.value is PosST) scope[n.name.value] = PosST
             else scope[n.name.value] = eval(n.value, null).check<IntValue>().toAST()
-            notifyOf(n.name, NameBound)
+            notifyOf(Pair(n.name, scope), NameBound)
         }
 
         override suspend fun visitRepeat(n: RepeatST): Node {

@@ -24,7 +24,16 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         private fun popLabels() { labels = labelsStack.pop() }
 
-        private suspend fun eval(n: ExprST) = eval(n) { asm.pos() }
+        private val evalCtx = object : EvalContext {
+            override fun pos() = asm.pos()
+
+            override fun labelAddr(name: String): Int? {
+                val label = labels[name]
+                return label?.addr
+            }
+        }
+
+        private suspend fun eval(n: ExprST) = eval(n, evalCtx)
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }

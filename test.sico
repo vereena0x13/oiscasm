@@ -1,3 +1,4 @@
+/*
 .include "test2.sico"
 
 
@@ -49,10 +50,10 @@ l0:
     t1 t1 l0
 l0:
 }
+*/
 
 
-
-
+/*
 .macro resx(x) {
     .repeat 2 {
         .res 2, 1 << x
@@ -62,9 +63,12 @@ l0:
 
 resx(1)
 resx(2)
+*/
 
 
+        xs+1
 
-
+        4 3
+xs:     1 2
 
 

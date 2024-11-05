@@ -12,6 +12,9 @@ class WithDriver(val driver: Driver) : ExtensionContext.AbstractElement(Key) {
     companion object Key : ExtensionContext.IKey<WithDriver>
 }
 
+suspend inline fun <reified T: Notification> WorkerScope.waitOn(value: Any) = waitOn(value, T::class, null)
+suspend inline fun <reified T: Notification> WorkerScope.waitOn(value: Any, noinline orElse: (() -> Unit)) = waitOn(value, T::class, orElse)
+
 suspend fun WorkerScope.waitOn(value: Any, notif: KClass<out Notification>, orElse: (() -> Unit)? = null) = with(WithDriver) { ext ->
     val st = Thread.currentThread().stackTrace.drop(1)
     suspendCancellableCoroutine {

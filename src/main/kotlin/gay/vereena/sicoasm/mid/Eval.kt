@@ -52,21 +52,26 @@ private inline fun <reified L : Value, reified R : Value> Binary.binary(
 }
 
 
-suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithScopes) {
+interface EvalContext {
+    fun pos(): Int
+    fun labelAddr(name: String): Int?
+}
+
+suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithScopes) {
     return when(n) {
         is IntST -> IntValue(n.value)
         is StringST -> StringValue(n.value)
-        is IdentST -> eval(lookupBinding(n.value).value as ExprST, pos) // NOTE TODO: don't just cast to ExprST
+        is IdentST -> eval(lookupBinding(n.value).value as ExprST, ctx) // NOTE TODO: don't just cast to ExprST
         is BoolST -> BoolValue(n.value)
         is LabelRefST -> TODO()
         is UnaryST -> when(n.op) {
-            UnaryOP.NEG -> IntValue(-eval(n.value, pos).checkInt())
-            UnaryOP.BIT_NOT -> IntValue(eval(n.value, pos).checkInt().inv())
-            UnaryOP.NOT -> BoolValue(!eval(n.value, pos).checkBool())
+            UnaryOP.NEG -> IntValue(-eval(n.value, ctx).checkInt())
+            UnaryOP.BIT_NOT -> IntValue(eval(n.value, ctx).checkInt().inv())
+            UnaryOP.NOT -> BoolValue(!eval(n.value, ctx).checkBool())
         }
         is BinaryST -> {
-            val left = eval(n.left, pos)
-            val right = eval(n.right, pos)
+            val left = eval(n.left, ctx)
+            val right = eval(n.right, ctx)
             when(n.op) {
                 BinaryOP.ADD -> Binary()
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> IntValue(l.value + r.value) }
@@ -100,7 +105,7 @@ suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithSco
                 BinaryOP.OR -> BoolValue(left.checkBool() || right.checkBool())
             }
         }
-        is PosST -> IntValue(pos!!())
-        is ParenST -> eval(n.value, pos)
+        is PosST -> IntValue(ctx!!.pos())
+        is ParenST -> eval(n.value, ctx)
     }
 }
