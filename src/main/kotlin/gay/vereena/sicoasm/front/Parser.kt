@@ -281,11 +281,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         RepeatST(count, iteratorName, body, it)
     }
 
-    private fun parseRes(): ResST {
+    private fun parseRes(): RepeatST {
         expectDirectiveNext("res")
         val count = parseExpr()
         val value = if (acceptNext(COMMA)) parseExpr() else IntST(0)
-        return ResST(count, value)
+        return RepeatST(count, "_i", listOf(value), currentScope)
     }
 
     // TODO: think of a name for this

@@ -58,7 +58,6 @@ data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
 data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>, val scope: Scope) : Node()
 data class RepeatST(val count: ExprST, val iteratorName: String, val body: List<Node>, val scope: Scope) : Node()
-data class ResST(val count: ExprST, val value: ExprST) : Node()
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
@@ -119,7 +118,6 @@ interface ASTAdapter {
         is DefineST -> visitDefine(n)
         is MacroST -> visitMacro(n)
         is RepeatST -> visitRepeat(n)
-        is ResST -> visitRes(n)
         is IncludeST -> visitInclude(n)
         is FileST -> visitFile(n)
     }
@@ -152,7 +150,6 @@ interface ASTAdapter {
     suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
     suspend fun visitMacro(n: MacroST): Node = n
     suspend fun visitRepeat(n: RepeatST): Node = n
-    suspend fun visitRes(n: ResST): Node = n
     suspend fun visitInclude(n: IncludeST): Node = n
     suspend fun visitFile(n: FileST): FileST = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
 }
@@ -256,9 +253,6 @@ fun astToString(n: Node): String {
                     visit(it)
                 }
                 level--
-            }
-            is ResST -> {
-                emitln("res(${n.count}, ${n.value})")
             }
             is MacroCallST -> {
                 emitln("macroCall(${n.name}):")

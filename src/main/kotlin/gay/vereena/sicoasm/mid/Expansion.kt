@@ -59,12 +59,6 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             }
             return BlockST(xs, scope)
         }
-
-        override suspend fun visitRes(n: ResST): Node {
-            val count = evalExpr(n.count)
-            val value = evalExpr(n.value)
-            return BlockST((0..<count).map { IntST(value) }.toList(), scope)
-        }
     }
 
     val expandedAst = expander.visit(ast)
