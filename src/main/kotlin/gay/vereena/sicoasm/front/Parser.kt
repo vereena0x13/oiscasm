@@ -246,22 +246,23 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return MacroCallST(name, args)
     }
 
-    private fun parseMacro() = pushScope {
-        expectDirectiveNext("macro")
-
-        val name = parseIdent()
-
+    private fun parseParamList(): List<String> {
         expectNext(LPAREN)
-        val params = mutableListOf<String>()
+        val xs = mutableListOf<String>()
         while (more() && !accept(RPAREN)) {
-            params += expectNext(IDENT).value
+            xs += expectNext(IDENT).value
             if (accept(COMMA)) next()
             else expect(RPAREN)
         }
         expectNext(RPAREN)
+        return xs
+    }
 
+    private fun parseMacro() = pushScope {
+        expectDirectiveNext("macro")
+        val name = parseIdent()
+        val params = if(accept(LPAREN)) parseParamList() else listOf()
         val body = parseBlockRaw()
-
         MacroST(name, params, body, it)
     }
 

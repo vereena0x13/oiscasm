@@ -27,7 +27,7 @@ start:
     x
 }
 
-.macro givz() {
+.macro givz {
     giv2(0)
 }
 
@@ -41,12 +41,12 @@ start:
     .repeat 2 { x } ?+1
 }
 
-.macro nop() {
+.macro nop {
     t0 t0 l0
 l0:
 }
 
-.macro nop2() {
+.macro nop2 {
     t1 t1 l0
 l0:
 }
