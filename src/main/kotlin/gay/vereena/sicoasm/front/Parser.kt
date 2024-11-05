@@ -296,6 +296,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseIf() = parseIfLike("if")
     private fun parseIfBlank() = parseIfLike("ifblank", { BlankST(parseExpr()) })
+    private fun parseIfnBlank() = parseIfLike("ifnblank", { UnaryST(UnaryOP.NOT, BlankST(parseExpr())) })
 
     // TODO: think of a name for this
     private fun parse2(): Node {
@@ -321,6 +322,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             acceptDirective("res") -> parseRes()
             acceptDirective("if") -> parseIf()
             acceptDirective("ifblank") -> parseIfBlank()
+            acceptDirective("ifnblank") -> parseIfnBlank()
             else -> parseExpr()
         }
     }

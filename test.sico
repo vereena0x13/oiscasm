@@ -81,6 +81,11 @@ resx(2)
             a t0 ?+1
 }
 
+.macro sble(a, b, c) {
+            a b
+            .ifnblank c c .else ?+1
+}
+
             0 0 start
 
 z:          0
@@ -95,13 +100,14 @@ tstart:     text
 left:       len-text
 
 start:
-loop:       -1 text ?+1
+loop:       sble(-1, text)
             left one restart
             ?-5 neg loop
 
 restart:    set(loop+1, tstart)
             set(left, len)
             jump(loop)
+
 
 
 
