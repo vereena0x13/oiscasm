@@ -13,6 +13,10 @@ sealed class Value {
         return this
     }
 
+    fun checkInt() = check<IntValue>().value
+    fun checkBool() = check<BoolValue>().value
+    fun checkString() = check<StringValue>().value
+
     abstract fun toAST(): ExprST
 }
 
@@ -56,9 +60,9 @@ suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithSco
         is BoolST -> BoolValue(n.value)
         is LabelRefST -> TODO()
         is UnaryST -> when(n.op) {
-            UnaryOP.NEG -> IntValue(-eval(n.value, pos).check<IntValue>().value)
-            UnaryOP.BIT_NOT -> IntValue(eval(n.value, pos).check<IntValue>().value.inv())
-            UnaryOP.NOT -> BoolValue(!eval(n.value, pos).check<BoolValue>().value)
+            UnaryOP.NEG -> IntValue(-eval(n.value, pos).checkInt())
+            UnaryOP.BIT_NOT -> IntValue(eval(n.value, pos).checkInt().inv())
+            UnaryOP.NOT -> BoolValue(!eval(n.value, pos).checkBool())
         }
         is BinaryST -> {
             val left = eval(n.left, pos)
@@ -68,16 +72,16 @@ suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithSco
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> IntValue(l.value + r.value) }
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> StringValue(l.value + r.value) }
                     .fold({ it }, { ice() })
-                BinaryOP.SUB -> IntValue(left.check<IntValue>().value - right.check<IntValue>().value)
-                BinaryOP.MUL -> IntValue(left.check<IntValue>().value * right.check<IntValue>().value)
-                BinaryOP.DIV -> IntValue(left.check<IntValue>().value / right.check<IntValue>().value)
-                BinaryOP.MOD -> IntValue(left.check<IntValue>().value % right.check<IntValue>().value)
-                BinaryOP.POW -> IntValue(left.check<IntValue>().value.toDouble().pow(right.check<IntValue>().value).toInt())
-                BinaryOP.BIT_AND -> IntValue(left.check<IntValue>().value and right.check<IntValue>().value)
-                BinaryOP.BIT_OR -> IntValue(left.check<IntValue>().value or right.check<IntValue>().value)
-                BinaryOP.BIT_XOR -> IntValue(left.check<IntValue>().value xor right.check<IntValue>().value)
-                BinaryOP.SHL -> IntValue(left.check<IntValue>().value shl right.check<IntValue>().value)
-                BinaryOP.SHR -> IntValue(left.check<IntValue>().value shr right.check<IntValue>().value)
+                BinaryOP.SUB -> IntValue(left.checkInt() - right.checkInt())
+                BinaryOP.MUL -> IntValue(left.checkInt() * right.checkInt())
+                BinaryOP.DIV -> IntValue(left.checkInt() / right.checkInt())
+                BinaryOP.MOD -> IntValue(left.checkInt() % right.checkInt())
+                BinaryOP.POW -> IntValue(left.checkInt().toDouble().pow(right.checkInt()).toInt())
+                BinaryOP.BIT_AND -> IntValue(left.checkInt() and right.checkInt())
+                BinaryOP.BIT_OR -> IntValue(left.checkInt() or right.checkInt())
+                BinaryOP.BIT_XOR -> IntValue(left.checkInt() xor right.checkInt())
+                BinaryOP.SHL -> IntValue(left.checkInt() shl right.checkInt())
+                BinaryOP.SHR -> IntValue(left.checkInt() shr right.checkInt())
                 BinaryOP.EQ -> Binary()
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> BoolValue(l.value == r.value) }
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> BoolValue(l.value == r.value) }
@@ -88,12 +92,12 @@ suspend fun WorkerScope.eval(n: ExprST, pos: (() -> Int)?): Value = with(WithSco
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> BoolValue(l.value != r.value) }
                     .binary<BoolValue, BoolValue>(left, right) { l, r, _ -> BoolValue(l.value != r.value) }
                     .fold({ it }, { ice() })
-                BinaryOP.LT -> BoolValue(left.check<IntValue>().value < right.check<IntValue>().value)
-                BinaryOP.GT -> BoolValue(left.check<IntValue>().value > right.check<IntValue>().value)
-                BinaryOP.LTE -> BoolValue(left.check<IntValue>().value <= right.check<IntValue>().value)
-                BinaryOP.GTE -> BoolValue(left.check<IntValue>().value >= right.check<IntValue>().value)
-                BinaryOP.AND -> BoolValue(left.check<BoolValue>().value && right.check<BoolValue>().value)
-                BinaryOP.OR -> BoolValue(left.check<BoolValue>().value || right.check<BoolValue>().value)
+                BinaryOP.LT -> BoolValue(left.checkInt() < right.checkInt())
+                BinaryOP.GT -> BoolValue(left.checkInt() > right.checkInt())
+                BinaryOP.LTE -> BoolValue(left.checkInt() <= right.checkInt())
+                BinaryOP.GTE -> BoolValue(left.checkInt() >= right.checkInt())
+                BinaryOP.AND -> BoolValue(left.checkBool() && right.checkBool())
+                BinaryOP.OR -> BoolValue(left.checkBool() || right.checkBool())
             }
         }
         is PosST -> IntValue(pos!!())

@@ -62,65 +62,67 @@ data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: Lis
 
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
-        is EmptyST -> n
-        is IntST -> visitInt(n)
-        is StringST -> visitString(n)
-        is IdentST -> visitIdent(n)
-        is BoolST -> visitBool(n)
-        is LabelST -> visitLabel(n)
-        is LabelRefST -> visitLabelRef(n)
-        is UnaryST -> visitUnary(n)
-        is BinaryST -> visitBinary(n)
-        is PosST -> visitPos(n)
-        is ParenST -> visitParen(n)
-        is IfST -> visitIf(n)
-        is BlockST -> visitBlock(n)
-        is MacroCallST -> visitMacroCall(n)
-        is DefineST -> visitDefine(n)
-        is MacroST -> visitMacro(n)
-        is RepeatST -> visitRepeat(n)
-        is IncludeST -> visitInclude(n)
-        is FileST -> visitFile(n)
+        is EmptyST      -> n
+        is IntST        -> visitInt(n)
+        is StringST     -> visitString(n)
+        is IdentST      -> visitIdent(n)
+        is BoolST       -> visitBool(n)
+        is LabelST      -> visitLabel(n)
+        is LabelRefST   -> visitLabelRef(n)
+        is UnaryST      -> visitUnary(n)
+        is BinaryST     -> visitBinary(n)
+        is PosST        -> visitPos(n)
+        is ParenST      -> visitParen(n)
+        is IfST         -> visitIf(n)
+        is BlockST      -> visitBlock(n)
+        is MacroCallST  -> visitMacroCall(n)
+        is DefineST     -> visitDefine(n)
+        is MacroST      -> visitMacro(n)
+        is RepeatST     -> visitRepeat(n)
+        is IncludeST    -> visitInclude(n)
+        is FileST       -> visitFile(n)
     }
 
     suspend fun visitExpr(n: ExprST): ExprST = when(n) {
-        is IntST -> visitInt(n)
-        is StringST -> visitString(n)
-        is IdentST -> visitIdent(n)
-        is BoolST -> visitBool(n)
-        is LabelRefST -> visitLabelRef(n)
-        is UnaryST -> visitUnary(n)
-        is BinaryST -> visitBinary(n)
-        is PosST -> visitPos(n)
-        is ParenST -> visitParen(n)
+        is IntST        -> visitInt(n)
+        is StringST     -> visitString(n)
+        is IdentST      -> visitIdent(n)
+        is BoolST       -> visitBool(n)
+        is LabelRefST   -> visitLabelRef(n)
+        is UnaryST      -> visitUnary(n)
+        is BinaryST     -> visitBinary(n)
+        is PosST        -> visitPos(n)
+        is ParenST      -> visitParen(n)
     }
 
-    suspend fun visitInt(n: IntST): ExprST = n
-    suspend fun visitString(n: StringST): ExprST = n
-    suspend fun visitIdent(n: IdentST): ExprST = n
-    suspend fun visitBool(n: BoolST): ExprST = n
-    suspend fun visitLabelRef(n: LabelRefST): ExprST = n
-    suspend fun visitUnary(n: UnaryST): ExprST = UnaryST(n.op, visitExpr(n.value))
-    suspend fun visitBinary(n: BinaryST): ExprST = BinaryST(n.op, visitExpr(n.left), visitExpr(n.right))
-    suspend fun visitPos(n: PosST): ExprST = n
-    suspend fun visitParen(n: ParenST): ExprST = ParenST(visitExpr(n.value))
-    suspend fun visitLabel(n: LabelST): Node = n
-    suspend fun visitIf(n: IfST): Node = IfST(visitExpr(n.cond), visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
-    suspend fun visitMacroCall(n: MacroCallST): Node = MacroCallST(n.name, n.args.map { visitExpr(it) })
-    suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }, n.scope)
-    suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
-    suspend fun visitMacro(n: MacroST): Node = n
-    suspend fun visitRepeat(n: RepeatST): Node = n
-    suspend fun visitInclude(n: IncludeST): Node = n
-    suspend fun visitFile(n: FileST): FileST = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
+    suspend fun visitInt(n: IntST): ExprST              = n
+    suspend fun visitString(n: StringST): ExprST        = n
+    suspend fun visitIdent(n: IdentST): ExprST          = n
+    suspend fun visitBool(n: BoolST): ExprST            = n
+    suspend fun visitLabelRef(n: LabelRefST): ExprST    = n
+    suspend fun visitUnary(n: UnaryST): ExprST          = UnaryST(n.op, visitExpr(n.value))
+    suspend fun visitBinary(n: BinaryST): ExprST        = BinaryST(n.op, visitExpr(n.left), visitExpr(n.right))
+    suspend fun visitPos(n: PosST): ExprST              = n
+    suspend fun visitParen(n: ParenST): ExprST          = ParenST(visitExpr(n.value))
+    suspend fun visitLabel(n: LabelST): Node            = n
+    suspend fun visitIf(n: IfST): Node                  = IfST(visitExpr(n.cond), visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
+    suspend fun visitMacroCall(n: MacroCallST): Node    = MacroCallST(n.name, n.args.map { visitExpr(it) })
+    suspend fun visitBlock(n: BlockST): Node            = BlockST(n.values.map { visit(it) }, n.scope)
+    suspend fun visitDefine(n: DefineST): Node          = DefineST(n.name, visitExpr(n.value))
+    suspend fun visitMacro(n: MacroST): Node            = MacroST(n.name, n.params, n.body.map { visit(it) }, n.scope)
+    suspend fun visitRepeat(n: RepeatST): Node          = RepeatST(visitExpr(n.count), n.iteratorName, n.body.map { visit(it) }, n.scope)
+    suspend fun visitInclude(n: IncludeST): Node        = n
+    suspend fun visitFile(n: FileST): FileST            = FileST(n.lexer, n.includes, n.body.map { visit(it) }, n.scope)
 }
 
 
 suspend fun findLabels(n: Node): Set<String> {
     val labels = mutableSetOf<String>()
     val finder = object : ASTAdapter {
-        override suspend fun visitLabel(n: LabelST) = n.also { labels += n.value }
-        override suspend fun visitMacro(n: MacroST) = n.also { n.body.forEach { visit(it) } }
+        override suspend fun visitLabel(n: LabelST)     = n.also { labels += n.value }
+        override suspend fun visitIf(n: IfST)           = IfST(n.cond, visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
+        override suspend fun visitRepeat(n: RepeatST)   = RepeatST(n.count, n.iteratorName, n.body.map { visit(it) }, n.scope)
+        override suspend fun visitMacro(n: MacroST)     = n.also { n.body.forEach { visit(it) } }
     }
     finder.visit(n)
     return labels.toSet()

@@ -6,23 +6,24 @@ import gay.vereena.sicoasm.front.*
 
 
 data class MacroExpanded(val macro: MacroST, val call: MacroCallST, val result: Node) : Notification
+data object Expanded : Notification
 
 
 fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.scope)) {
     val ws = this
-
     val expander = object : ASTAdapter {
         var labels: Set<String>? = null
 
-        override suspend fun visitIdent(n: IdentST) =
-            if(labels?.contains(n.value) == true) LabelRefST(n.value)
-            else lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
+        override suspend fun visitIdent(n: IdentST) = when {
+            labels?.contains(n.value) == true -> LabelRefST(n.value).also { println("labels contains $n") }
+            else -> lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
+        }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitIf(n: IfST) = when {
-            eval(n.cond, null).check<BoolValue>().value -> n.then
+            eval(n.cond, null).checkBool() -> n.then
             n.otherwise != null -> n.otherwise
             else -> EmptyST
-        }
+        }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
             val macro = lookupBinding(n.name).value
@@ -46,16 +47,17 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         override suspend fun visitDefine(n: DefineST) = n.also {
             if(n.value is PosST) scope[n.name.value] = PosST
             else scope[n.name.value] = eval(n.value, null).check<IntValue>().toAST()
+            notifyOf(n.name, NameBound)
         }
 
         override suspend fun visitRepeat(n: RepeatST): Node {
-            val count = eval(n.count, null).check<IntValue>().value
+            val count = eval(n.count, null).checkInt()
             return BlockST((0..<count).flatMap { i ->
                 withScope(Scope(scope)) {
                     if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)
                     n.body.map { visit(it) }.filter { it !is EmptyST }
                 }
-            }, scope)
+            }, scope).also { notifyOf(n, Expanded) }
         }
     }
 
