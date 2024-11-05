@@ -9,3 +9,10 @@ start:      t0 t0 ?+1
             t0 t0 start
 
             NL
+
+            3 4
+            xs+3
+xs:         1 2
+
+text:       "test"
+len:        ?-text

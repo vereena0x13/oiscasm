@@ -1,0 +1,17 @@
+.macro resx(x) {
+    .repeat 2 {
+        .res 2, 1 << x
+        .res 2, 2 << x
+    }
+}
+
+resx(1)
+resx(2)
+
+.macro clear(x) {
+    .repeat 2 x
+    ?+1
+}
+
+clear(3)
+clear(4)

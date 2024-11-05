@@ -1,0 +1,16 @@
+            0 0 start
+
+t0:         .res 1
+xs:         .res 4, 7
+
+start:      t0 t0 start
+
+.repeat 4 ?+i
+
+.repeat 4, x 1 << x
+
+.repeat 4, y {
+    y
+    1 << y
+    y ** 2
+}

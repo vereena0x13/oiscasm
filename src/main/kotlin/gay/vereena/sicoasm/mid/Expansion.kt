@@ -56,6 +56,8 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         override suspend fun visitRepeat(n: RepeatST): Node {
             val count = eval(n.count, null).checkInt()
             return BlockST((0..<count).map { i ->
+                // NOTE TODO: maybe don't create a new scope each time
+                // if iteratorName == null?
                 withScope(Scope(scope)) {
                     if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)
                     visit(n.body)
