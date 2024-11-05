@@ -157,8 +157,7 @@ class Driver {
                 assert(runQueue.isEmpty())
             }
 
-            val ss = state.toString()
-            running.forEach { it.cancel(CancellationException(null, IllegalStateException(ss))) }
+            running.forEach { it.cancel(CancellationException(null, IllegalStateException(state.toString()))) }
         }
         val duration = System.currentTimeMillis() - start
 

@@ -1,10 +1,7 @@
 package gay.vereena.sicoasm.front
 
-import kotlin.math.*
-
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.util.*
 
 
 sealed class Node : WorkUnit
@@ -46,12 +43,13 @@ data class IntST(val value: Int) : ExprST()
 data class StringST(val value: String) : ExprST()
 data class IdentST(val value: String) : ExprST()
 data class BoolST(val value: Boolean) : ExprST()
-data class LabelST(val value: String) : ExprST()
+data class LabelST(val value: String) : Node()
 data class LabelRefST(val value: String) : ExprST()
 data class UnaryST(val op: UnaryOP, val value: ExprST) : ExprST()
 data class BinaryST(val op: BinaryOP, val left: ExprST, val right: ExprST) : ExprST()
 data object PosST : ExprST()
 data class ParenST(val value: ExprST) : ExprST()
+data class IfST(val cond: ExprST, val then: Node, val otherwise: Node? = null): Node()
 data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
@@ -60,45 +58,6 @@ data class RepeatST(val count: ExprST, val iteratorName: String?, val body: List
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 
-
-suspend fun WorkerScope.evalExpr(n: ExprST, pos: (() -> Int)? = null): Int = with(WithScopes) {
-    when (n) {
-        is IntST -> n.value
-        is StringST -> ice()
-        is IdentST -> evalExpr(lookupBinding(n).value as ExprST, pos)
-        is BoolST -> ice()
-        is LabelST -> ice()
-        is LabelRefST -> ice()
-        is UnaryST -> when (n.op) {
-            UnaryOP.NEG -> -evalExpr(n.value, pos)
-            UnaryOP.BIT_NOT -> evalExpr(n.value, pos).inv()
-            UnaryOP.NOT -> ice()
-        }
-        is BinaryST -> when (n.op) {
-            BinaryOP.ADD -> evalExpr(n.left, pos) + evalExpr(n.right, pos)
-            BinaryOP.SUB -> evalExpr(n.left, pos) - evalExpr(n.right, pos)
-            BinaryOP.MUL -> evalExpr(n.left, pos) * evalExpr(n.right, pos)
-            BinaryOP.DIV -> evalExpr(n.left, pos) / evalExpr(n.right, pos)
-            BinaryOP.MOD -> evalExpr(n.left, pos) % evalExpr(n.right, pos)
-            BinaryOP.POW -> evalExpr(n.left, pos).toDouble().pow(evalExpr(n.right, pos)).toInt()
-            BinaryOP.BIT_AND -> evalExpr(n.left, pos) and evalExpr(n.right, pos)
-            BinaryOP.BIT_OR -> evalExpr(n.left, pos) or evalExpr(n.right, pos)
-            BinaryOP.BIT_XOR -> evalExpr(n.left, pos) xor evalExpr(n.right, pos)
-            BinaryOP.SHL -> evalExpr(n.left, pos) shl evalExpr(n.right, pos)
-            BinaryOP.SHR -> evalExpr(n.left, pos) shr evalExpr(n.right, pos)
-            BinaryOP.EQ -> ice()
-            BinaryOP.NE -> ice()
-            BinaryOP.LT -> ice()
-            BinaryOP.GT -> ice()
-            BinaryOP.LTE -> ice()
-            BinaryOP.GTE -> ice()
-            BinaryOP.AND -> ice()
-            BinaryOP.OR -> ice()
-        }
-        is PosST -> if(pos != null) pos() else ice()
-        is ParenST -> evalExpr(n.value, pos)
-    }
-}
 
 interface ASTAdapter {
     suspend fun visit(n: Node): Node = when(n) {
@@ -112,6 +71,7 @@ interface ASTAdapter {
         is BinaryST -> visitBinary(n)
         is PosST -> visitPos(n)
         is ParenST -> visitParen(n)
+        is IfST -> visitIf(n)
         is BlockST -> visitBlock(n)
         is MacroCallST -> visitMacroCall(n)
         is DefineST -> visitDefine(n)
@@ -126,7 +86,6 @@ interface ASTAdapter {
         is StringST -> visitString(n)
         is IdentST -> visitIdent(n)
         is BoolST -> visitBool(n)
-        is LabelST -> visitLabel(n)
         is LabelRefST -> visitLabelRef(n)
         is UnaryST -> visitUnary(n)
         is BinaryST -> visitBinary(n)
@@ -138,12 +97,13 @@ interface ASTAdapter {
     suspend fun visitString(n: StringST): ExprST = n
     suspend fun visitIdent(n: IdentST): ExprST = n
     suspend fun visitBool(n: BoolST): ExprST = n
-    suspend fun visitLabel(n: LabelST): ExprST = n
     suspend fun visitLabelRef(n: LabelRefST): ExprST = n
     suspend fun visitUnary(n: UnaryST): ExprST = UnaryST(n.op, visitExpr(n.value))
     suspend fun visitBinary(n: BinaryST): ExprST = BinaryST(n.op, visitExpr(n.left), visitExpr(n.right))
     suspend fun visitPos(n: PosST): ExprST = n
     suspend fun visitParen(n: ParenST): ExprST = ParenST(visitExpr(n.value))
+    suspend fun visitLabel(n: LabelST): Node = n
+    suspend fun visitIf(n: IfST): Node = IfST(visitExpr(n.cond), visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
     suspend fun visitMacroCall(n: MacroCallST): Node = MacroCallST(n.name, n.args.map { visitExpr(it) })
     suspend fun visitBlock(n: BlockST): Node = BlockST(n.values.map { visit(it) }, n.scope)
     suspend fun visitDefine(n: DefineST): Node = DefineST(n.name, visitExpr(n.value))
@@ -201,6 +161,33 @@ fun astToString(n: Node): String {
                 level++
                 indent()
                 visit(n.value)
+                level--
+            }
+            is IfST -> {
+                emitln("if:")
+                level++
+                    indent()
+                    emitln("cond:")
+                    level++
+                        indent()
+                        visit(n.cond)
+                    level--
+
+                    indent()
+                    emitln("then:")
+                    level++
+                        indent()
+                        visit(n.then)
+                    level--
+
+                    if(n.otherwise != null) {
+                        indent()
+                        emitln("otherwise:")
+                        level++
+                            indent()
+                            visit(n.otherwise)
+                        level--
+                    }
                 level--
             }
             is BlockST -> {

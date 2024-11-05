@@ -25,18 +25,19 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     val treeAssembler = object : ASTAdapter {
         var blockLabels: Set<String>? = null
 
-        suspend fun eval(n: ExprST) = evalExpr(n) { asm.pos() }
+        suspend fun eval(n: ExprST) = eval(n) { asm.pos() }
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitIdent(n: IdentST) = ice()
-        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
         override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
 
-        override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
-        override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })
-        override suspend fun visitPos(n: PosST) = IntST(eval(n).also { asm.emit(it) })
+        override suspend fun visitUnary(n: UnaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
+        override suspend fun visitBinary(n: BinaryST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
+        override suspend fun visitPos(n: PosST) = eval(n).also { if(it is IntValue) asm.emit(it.value) }.toAST()
         override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
+
+        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
 
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()

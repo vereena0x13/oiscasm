@@ -29,6 +29,8 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             if(labels?.contains(n.value) == true) LabelRefST(n.value)
             else lookupBinding(n).value as ExprST // TODO: don't just cast to ExprST
 
+        override suspend fun visitIf(n: IfST) = TODO() // NOTE: we need to be able to evaluate boolean expressions...
+
         override suspend fun visitMacroCall(n: MacroCallST): Node {
             val macro = lookupBinding(n.name).value
             val block = if (macro is MacroST) {
@@ -50,11 +52,11 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
 
         override suspend fun visitDefine(n: DefineST) = n.also {
             if(n.value is PosST) scope[n.name.value] = PosST
-            else scope[n.name.value] = IntST(evalExpr(n.value))
+            else scope[n.name.value] = eval(n.value, null).check<IntValue>().toAST()
         }
 
         override suspend fun visitRepeat(n: RepeatST): Node {
-            val count = evalExpr(n.count)
+            val count = eval(n.count, null).check<IntValue>().value
             return BlockST((0..<count).flatMap { i ->
                 withScope(Scope(scope)) {
                     if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)

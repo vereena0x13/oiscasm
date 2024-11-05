@@ -77,6 +77,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun acceptDirective(value: String) = accept(DIRECTIVE) && current().value == value
 
+    private fun acceptDirectiveNext(value: String) = accept(DIRECTIVE) && next().value == value
+
     private fun expectDirectiveNext(value: String): Token {
         val t = expectNext(DIRECTIVE)
         if (t.value != value) unexpected(expected = value)
@@ -265,6 +267,25 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return RepeatST(count, null, listOf(value), currentScope)
     }
 
+    private fun parseIf(): IfST {
+        expectDirectiveNext("if")
+        val cond = parseExpr()
+        val then = parse2()
+        val otherwise = if(acceptDirectiveNext("else")) parse2() else null
+        return IfST(cond, then, otherwise)
+    }
+
+    private fun parseBlock(): BlockST {
+        expectNext(LBRACE)
+        val (xs, scope) = pushScope {
+            val xs = mutableListOf<Node>()
+            while(more() && !accept(RBRACE)) xs += parse2()
+            expectNext(RBRACE)
+            Pair(xs, currentScope)
+        }
+        return BlockST(xs, scope)
+    }
+
     // TODO: think of a name for this
     private fun parse2(): Node {
         if (acceptNext(IDENT)) {
@@ -283,9 +304,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
         return when {
             accept(LABEL) -> LabelST(expectNext(LABEL).value)
+            accept(LBRACE) -> parseBlock()
             acceptDirective("define") -> parseDefine()
             acceptDirective("repeat") -> parseRepeat()
             acceptDirective("res") -> parseRes()
+            acceptDirective("if") -> parseIf()
             else -> parseExpr()
         }
     }
