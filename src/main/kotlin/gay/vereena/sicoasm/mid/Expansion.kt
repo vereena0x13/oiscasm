@@ -19,6 +19,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             else -> lookupBinding(n.value).value as ExprST // TODO: don't just cast to ExprST
         }.also { notifyOf(n, Expanded) }
 
+        // NOTE TODO: can't support ComputeLater; do we care?
         override suspend fun visitIf(n: IfST) = when {
             eval(n.cond, null).checkBool() -> n.then
             n.otherwise != null -> n.otherwise
@@ -35,7 +36,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
                 withScope(Scope(scope)) {
                     n.args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                     labels = findLabels(macro)
-                    BlockST(macro.body.map { visit(it) }.filter { it !is DefineST && it !is EmptyST }, scope).also { labels = null }
+                    BlockST(macro.body.map { visit(it) }.filter { it !is EmptyST }, scope).also { labels = null }
                 }
             } else {
                 ws.reportFatal("Attempt to call non-macro value '$macro'", true)
@@ -44,12 +45,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             return block
         }
 
-        override suspend fun visitDefine(n: DefineST) = n.also {
-            if(n.value is PosST) scope[n.name.value] = PosST
-            else scope[n.name.value] = eval(n.value, null).check<IntValue>().toAST()
-            notifyOf(Pair(n.name, scope), NameBound)
-        }
-
+        // NOTE TODO: can't support ComputeLater; do we care?
         override suspend fun visitRepeat(n: RepeatST): Node {
             val count = eval(n.count, null).checkInt()
             return BlockST((0..<count).flatMap { i ->

@@ -1,6 +1,7 @@
 package gay.vereena.sicoasm.front
 
 import gay.vereena.sicoasm.mid.*
+import gay.vereena.sicoasm.back.*
 
 
 sealed class Node
@@ -8,7 +9,7 @@ data object EmptyST : Node()
 
 sealed class ExprST : Node()
 
-data class DeferredST(val pos: Int) : ExprST() {
+data class DeferredST(val pos: Int, val expr: ExprST, val labels: Map<String, Label>) : ExprST() {
     companion object {
         val MAGIC_NUMBER = "D3F3553D".toLong(16).toInt()
     }

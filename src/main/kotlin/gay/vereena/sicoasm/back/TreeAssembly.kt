@@ -8,8 +8,6 @@ import gay.vereena.sicoasm.util.*
 
 class TreeAssembled(val code: IntArray) : Notification
 
-private data class DeferredComputation(val pos: Int, val expr: ExprST, val labels: Map<String, Label>)
-
 fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.scope)) {
     val asm = Assembler()
 
@@ -35,8 +33,6 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             }
         }
 
-        private val computeLaters = mutableListOf<DeferredComputation>()
-
         private suspend fun evalMaybeLater(n: ExprST): ExprST {
             return try {
                 val value = eval(n)
@@ -48,8 +44,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
                 val replacer = object : ASTAdapter {
                     override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
                 }
-                computeLaters += DeferredComputation(pos, replacer.visitExpr(n), labels)
-                DeferredST(pos)
+                DeferredST(pos, replacer.visitExpr(n), labels)
             }
         }
 
@@ -76,27 +71,31 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
             val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
 
-            computeLaters.forEach {
-                val evalCtx = object : EvalContext {
-                    override fun pos() = ice()
-                    override fun labelAddr(name: String) = it.labels[name]!!.addr!!
-                }
-                val value = eval(it.expr, evalCtx)
-                asm.set(it.pos, value.checkInt())
-            }
-
             // NOTE: we don't really need to do this, but I wanted to. Bite me.
             val replacer = object : ASTAdapter {
-                override suspend fun visitDeferred(n: DeferredST) = IntST(asm.get(n.pos))
+                override suspend fun visitDeferred(n: DeferredST): ExprST {
+                    val evalCtx = object : EvalContext {
+                        override fun pos() = ice()
+                        override fun labelAddr(name: String) = n.labels[name]!!.addr!!
+                    }
+                    val value = eval(n.expr, evalCtx)
+                    asm.set(n.pos, value.checkInt())
+                    return value.toAST()
+                }
             }
             return replacer.visitFile(f)
+        }
+
+        override suspend fun visitDefine(n: DefineST) = n.also {
+            if(n.value is PosST) scope[n.name.value] = PosST
+            else scope[n.name.value] = eval(n.value, null).toAST()
+            notifyOf(Pair(n.name, scope), NameBound)
         }
 
         override suspend fun visitBool(n: BoolST) = ice()
         override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitIf(n: IfST) = ice()
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
-        override suspend fun visitDefine(n: DefineST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
         override suspend fun visitRepeat(n: RepeatST) = ice()
     }

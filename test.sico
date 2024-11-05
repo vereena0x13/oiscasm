@@ -66,12 +66,12 @@ resx(2)
 */
 
 
+.define XS xs+1
 
         1 2
 xs:     3 4
 
-.repeat 4 { xs + i }
-
+        XS
 
 
 
