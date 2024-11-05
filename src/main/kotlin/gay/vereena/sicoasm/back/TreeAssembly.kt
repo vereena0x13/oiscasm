@@ -1,5 +1,6 @@
 package gay.vereena.sicoasm.back
 
+import gay.vereena.sicoasm.config
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.mid.*
@@ -99,15 +100,21 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     }
 
     val finalAst = treeAssembler.visit(ast)
-    println("final AST:\n${astToString(finalAst)}")
-
     val code = asm.assemble()
-    if(false) {
-        val maxLen = code.maxOfOrNull { it.toString().length }!!
-        println("i: " + code.indices.joinToString(" ") { it.toString().padStart(maxLen) })
-        println("c: " + code.joinToString(" ") { it.toString().padStart(maxLen) })
-    } else {
-        println(code.joinToString(", "))
+
+    if(config.debug) {
+        println("final AST:\n${astToString(finalAst)}")
+
+        if (false) {
+            val maxLen = code.maxOfOrNull { it.toString().length }!!
+            println("i: " + code.indices.joinToString(" ") { it.toString().padStart(maxLen) })
+            println("c: " + code.joinToString(" ") { it.toString().padStart(maxLen) })
+            println()
+        } else {
+            println(code.joinToString(", "))
+            println()
+        }
     }
+
     notifyOf(ast, TreeAssembled(code))
 }

@@ -1,8 +1,9 @@
 package gay.vereena.sicoasm.mid
 
-import gay.vereena.sicoasm.back.assembleTree
-import gay.vereena.sicoasm.driver.*
+import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.front.*
+import gay.vereena.sicoasm.back.*
+import gay.vereena.sicoasm.driver.*
 
 
 data class MacroExpanded(val macro: MacroST, val call: MacroCallST, val result: Node) : Notification
@@ -64,6 +65,6 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
     }
 
     val expandedAst = expander.visit(ast)
-    println("expanded AST:\n${astToString(expandedAst)}")
+    if(config.debug) println("expanded AST:\n${astToString(expandedAst)}")
     enqueueWorker(assembleTree(expandedAst as FileST))
 }

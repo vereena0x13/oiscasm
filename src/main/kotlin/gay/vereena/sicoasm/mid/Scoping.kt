@@ -1,5 +1,6 @@
 package gay.vereena.sicoasm.mid
 
+import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.util.*
@@ -94,6 +95,6 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
     }
 
     val scopedAst = nameBinder.visitFile(ast)
-    println("scopedAst:\n${astToString(scopedAst)}")
+    if(config.debug) println("scopedAst:\n${astToString(scopedAst)}")
     enqueueWorker(expansion(scopedAst))
 }

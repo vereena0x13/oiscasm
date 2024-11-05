@@ -2,6 +2,7 @@ package gay.vereena.sicoasm.front
 
 import java.io.*
 
+import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.front.TokenType.*
 import gay.vereena.sicoasm.mid.*
 import gay.vereena.sicoasm.driver.*
@@ -343,6 +344,6 @@ fun parse(file: File) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
     val ast = parser.parse()
-    println("parsedAst:\n${astToString(ast)}")
+    if(config.debug) println("parsedAst:\n${astToString(ast)}")
     enqueueWorker(bindNames(ast))
 }

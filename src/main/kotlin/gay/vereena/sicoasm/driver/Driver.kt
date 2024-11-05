@@ -44,7 +44,7 @@ fun <T> WorkerScope.reportFatal(e: T, stop: Boolean = false): Nothing = withExt(
 fun WorkerScope.enqueueWorker(worker: WorkerConstructor) = withExt(WithDriver) { driver.enqueueWorker(worker) }
 
 
-class Driver {
+class Driver(private val exts: ExtensionContext = ExtensionContext.Empty) {
     private enum class State {
         RUNNING,
         DONE,
@@ -69,7 +69,7 @@ class Driver {
 
 
     private fun makeWorkerScope(extensions: ExtensionContext) = object : WorkerScope {
-        override val extensions = extensions + driverExtension
+        override val extensions = exts + extensions + driverExtension
     }
 
 
@@ -176,7 +176,6 @@ class Driver {
             }
             errors > 0 -> false
             else -> {
-                TERMINAL.println()
                 TERMINAL.println("Finished in $duration ms!")
                 TERMINAL.println("  Jobs: $retired")
                 TERMINAL.println("  Iterations: $iterations")
