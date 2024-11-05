@@ -3,6 +3,9 @@ package gay.vereena.sicoasm.util
 interface ExtensionContext {
     interface Key<E : Element>
 
+    // NOTE TODO: this isn't exactly correct; doesn't handle the case of only one extension, but... eh. good enough for now.
+    fun onAddedTo(exts: ExtensionContext) { }
+
     operator fun <E : Element> get(key: Key<E>): E?
 
     fun <R> fold(initial: R, operation: (R, Element) -> R): R
@@ -12,7 +15,7 @@ interface ExtensionContext {
         return ctx.fold(this) { acc, element ->
             val nacc = acc without element.key
             if (nacc == Empty) element
-            else Combined(acc, element)
+            else Combined(acc, element).also { ctx.onAddedTo(it) }
         }
     }
 

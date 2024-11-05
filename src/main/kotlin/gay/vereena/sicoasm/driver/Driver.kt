@@ -127,7 +127,7 @@ class Driver {
                             if (it is WorkerTerminated && it.stop) {
                                 state = State.STOPPED
                             } else {
-                                scope.extensions[WithWorkerCompletion.Key]?.fn?.invoke(driver)
+                                scope.extensions[AbstractWithWorkerCompletion.Key]?.fn?.invoke(driver)
                             }
                             running.remove(job)
                             retired++
