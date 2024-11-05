@@ -71,7 +71,6 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
             val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is LabelST && it !is EmptyST }, n.scope)
 
-            // NOTE: we don't really need to do this, but I wanted to. Bite me.
             val replacer = object : ASTAdapter {
                 override suspend fun visitDeferred(n: DeferredST): ExprST {
                     val evalCtx = object : EvalContext {
