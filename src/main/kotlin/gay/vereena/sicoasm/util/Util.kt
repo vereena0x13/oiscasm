@@ -17,11 +17,13 @@ fun panic(msg: String? = null): Nothing {
     exitProcess(1)
 }
 
-fun escape(s: String) = s.map {
+// NOTE TODO: is this named properly? idefk man. kms type shit.
+fun unescape(s: String) = s.map {
     when (it) {
-        '\r' -> "\\r"
-        '\n' -> "\\n"
         '\t' -> "\\t"
+        '\b' -> "\\b"
+        '\n' -> "\\n"
+        '\r' -> "\\r"
         else -> "$it"
     }
 }.fold("") { acc, it -> "$acc$it" }

@@ -1,12 +1,9 @@
 package gay.vereena.sicoasm.front
 
-import kotlin.math.min
-import kotlin.math.max
+import kotlin.math.*
 
-import gay.vereena.sicoasm.driver.WorkerScope
-import gay.vereena.sicoasm.driver.reportFatal
+import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.util.*
-import gay.vereena.sicoasm.util.escape
 
 import gay.vereena.sicoasm.front.TokenType.*
 
@@ -147,7 +144,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
     private fun unexpected(c: String): Nothing = scope.reportFatal(
         formatError(
-            "Unexpected: '${escape(c)}'",
+            "Unexpected: '${unescape(c)}'",
             Token(this, -1, IDENT, c, line, col - 1, Span(pos - 1)) // TODO
         ),
         true
@@ -258,11 +255,10 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                             when {
                                 accept('\\') -> sb.append('\\')
                                 accept('"') -> sb.append('"')
-                                accept('b') -> sb.append(8.toChar())
-                                accept('f') -> sb.append(12.toChar())
+                                accept('t') -> sb.append('\t')
+                                accept('b') -> sb.append('\b')
                                 accept('n') -> sb.append('\n')
                                 accept('r') -> sb.append('\r')
-                                accept('t') -> sb.append(9.toChar())
                                 accept('u') -> {
                                     val cb = StringBuilder()
                                     (0..<4).forEach { _ -> cb.append(next()) }
