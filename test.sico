@@ -50,6 +50,8 @@ l0:
     t1 t1 l0
 l0:
 }
+*/
+
 
 .macro resx(x) {
     .repeat 2 {
@@ -60,10 +62,5 @@ l0:
 
 resx(1)
 resx(2)
-resx(3)
-*/
 
 
-0b1010
-
-0xAAAA

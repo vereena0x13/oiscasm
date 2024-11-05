@@ -1,6 +1,5 @@
 package gay.vereena.sicoasm.driver
 
-import kotlin.system.exitProcess
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 
@@ -31,7 +30,7 @@ suspend fun WorkerScope.waitOn(value: WorkUnit, notif: KClass<out Notification>,
 
 fun WorkerScope.notifyOf(value: WorkUnit, notif: Notification) = withExt(WithDriver) { driver.notifyOf(value, notif) }
 
-fun WorkerScope.onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) = withExt(WithDriver) { driver.onNotify(notif, it) }
+inline fun <reified T: Notification> WorkerScope.onNotify(crossinline it: (WorkUnit, T) -> Unit) = withExt(WithDriver) { driver.onNotify(it) }
 
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) { driver.reportError(e) }
 
@@ -50,35 +49,33 @@ class Driver {
         STOPPED
     }
 
-    private val driverExtension = WithDriver(this)
-
     private data class NotificationKey(val value: WorkUnit, val notif: KClass<out Notification>)
 
-    private val blocked = mutableMapOf<NotificationKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
-    private val startQueue = ArrayDeque<WorkerConstructor>()
-    private val runQueue = ArrayDeque<WorkerContinuation>()
-    private val running = mutableListOf<Job>()
 
-    private val notificationCallbacks = mutableMapOf<KClass<out Notification>, MutableList<(WorkUnit, Notification) -> Unit>>()
+    private val driverExtension         = WithDriver(this)
 
-    private var errors = 0
-    private var waits = 0
-    private var notifies = 0
+    private val blocked                 = mutableMapOf<NotificationKey, MutableList<Pair<WorkerContinuation, (() -> Unit)>>>()
+    private val startQueue              = ArrayDeque<WorkerConstructor>()
+    private val runQueue                = ArrayDeque<WorkerContinuation>()
+    private val running                 = mutableListOf<Job>()
+
+    private val notificationCallbacks   = mutableMapOf<KClass<out Notification>, MutableList<(WorkUnit, Notification) -> Unit>>()
+
+    private var errors                  = 0
+    private var waits                   = 0
+    private var notifies                = 0
 
 
     private fun makeWorkerScope(extensions: ExtensionContext) = object : WorkerScope {
         override val extensions = extensions + driverExtension
     }
 
+
     fun waitOn(value: WorkUnit, notif: KClass<out Notification>, it: WorkerContinuation, orElse: () -> Unit) {
         waits++
         val key = NotificationKey(value, notif)
         val waiters = when (val waiters = blocked[key]) {
-            null -> {
-                val ws = mutableListOf<Pair<WorkerContinuation, (() -> Unit)>>()
-                blocked[key] = ws
-                ws
-            }
+            null -> mutableListOf<Pair<WorkerContinuation, (() -> Unit)>>().also { blocked[key] = it }
             else -> waiters
         }
         waiters += Pair(it, orElse)
@@ -90,7 +87,11 @@ class Driver {
         val key = NotificationKey(value, notif::class)
         val waiters = blocked[key] ?: return
         waiters.forEach { runQueue.addLast(it.first) }
-        blocked.remove(key)
+        waiters.clear()
+    }
+
+    inline fun <reified T: Notification> onNotify(crossinline it: (WorkUnit, T) -> Unit) {
+        onNotify(T::class) { wu, n -> it(wu, n as T) }
     }
 
     fun onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) {
@@ -120,9 +121,7 @@ class Driver {
                         val ctor = startQueue.removeFirst()
                         val (scope, worker) = ctor(::makeWorkerScope)
                         val job = launch(CoroutineName("co_${scope.workerName}"), CoroutineStart.LAZY) {
-                            supervisorScope {
-                                worker()
-                            }
+                            supervisorScope { worker() }
                         }
                         job.invokeOnCompletion {
                             if (it is WorkerTerminated && it.stop) {

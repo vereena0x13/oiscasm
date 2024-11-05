@@ -64,12 +64,10 @@ data class Span(val start: Int, val end: Int = start) {
         if (start > end) throw IllegalArgumentException("Span start must be <= end; got [$start,$end]")
     }
 
-    infix fun union(other: Span) = Span(min(start, other.start), max(end, other.end))
-
-    infix fun overlaps(other: Span) = other.start in range || other.end in range
-
     val range = start..end
 
+    infix fun union(other: Span) = Span(min(start, other.start), max(end, other.end))
+    infix fun overlaps(other: Span) = other.start in range || other.end in range
     override fun toString() = "[$start,$end]"
 }
 
@@ -81,9 +79,9 @@ class LexException(msg: String) : Exception(msg)
 
 
 class Lexer(private val scope: WorkerScope, private val file: String, private val source: String) {
-    private fun isLetter(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z')
-    private fun isDigit(c: Char): Boolean = c in '0'..'9'
-    private fun isIdent(c: Char): Boolean = isLetter(c) || isDigit(c) || c == '_'
+    private fun isLetter(c: Char) = (c in 'a'..'z') || (c in 'A'..'Z')
+    private fun isDigit(c: Char) = c in '0'..'9'
+    private fun isIdent(c: Char) = isLetter(c) || isDigit(c) || c == '_'
 
 
     private var start: Int = 0
@@ -119,21 +117,15 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
     private fun accept(vararg valid: Char): Boolean {
         if(!more()) return false
-        for (c in valid) {
-            if (peek() == c) {
-                next()
-                return true
-            }
-        }
-        return false
+        return if(valid.contains(peek())) { next(); true } else false
     }
 
     private fun acceptSeq(seq: String): Boolean {
         if(!more()) return false
         val pos = pos
         val col = col
-        for (i in seq.indices) {
-            if (next() != seq[i]) {
+        for (c in seq) {
+            if (next() != c) {
                 this.pos = pos
                 this.col = col
                 return false
@@ -153,19 +145,16 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
     private fun ignore() { start = pos }
 
-    private fun unexpected(c: String): Nothing {
-        scope.reportFatal(
-            formatError(
-                "Unexpected: '${escape(c)}'",
-                Token(this, -1, IDENT, c, line, col - 1, Span(pos - 1)) // TODO
-            ),
-            true
-        )
-    }
+    private fun unexpected(c: String): Nothing = scope.reportFatal(
+        formatError(
+            "Unexpected: '${escape(c)}'",
+            Token(this, -1, IDENT, c, line, col - 1, Span(pos - 1)) // TODO
+        ),
+        true
+    )
 
     private fun skipWhitespace() {
-        var r = true
-        while (more() && r) {
+        while (more()) {
             when (peek()) {
                 '\n' -> {
                     line++
@@ -173,15 +162,13 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     next()
                 }
                 ' ', '\t', '\r' -> next()
-                else -> r = false
+                else -> break
             }
         }
         ignore()
     }
 
-    private fun scanIdent() {
-        while (more() && isIdent(peek())) next()
-    }
+    private fun scanIdent() { while (more() && isIdent(peek())) next() }
 
     fun tokenize(): List<Token> {
         while (more()) {
@@ -287,15 +274,11 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                         emit(DIRECTIVE, source.substring(start + 1, pos))
                     }
                     isDigit(c) -> {
-                        if(c == '0' && (peek() == 'x' || peek() == 'b')) {
-                            when {
-                                accept('x') -> acceptRun("0123456789abcdefABCDEF")
-                                accept('b') -> acceptRun("01")
-                                else -> unexpected(peek().toString())
-                            }
-                        } else {
-                            while (more() && isDigit(peek())) next()
-                        }
+                        if(c == '0' && (peek() == 'x' || peek() == 'b')) when {
+                            accept('x') -> acceptRun("0123456789abcdefABCDEF")
+                            accept('b') -> acceptRun("01")
+                            else -> unexpected(peek().toString())
+                        } else while (more() && isDigit(peek())) next()
                         emit(INT, current())
                     }
                     else -> unexpected(c.toString())
