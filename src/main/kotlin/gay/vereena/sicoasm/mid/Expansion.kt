@@ -16,8 +16,9 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
 
         override suspend fun visitIdent(n: IdentST) = when {
             labels?.contains(n.value) == true -> LabelRefST(n.value)
-            else -> lookupBinding(n.value).value as ExprST // TODO: don't just cast to ExprST
-        }.also { notifyOf(n, Expanded) }
+            scope[n.value] != null -> scope[n.value]!!.value as ExprST // TODO: don't just cast to ExprST
+            else -> n
+        }.also { if(it !is IdentST) notifyOf(n, Expanded) }
 
         // NOTE TODO: can't support ComputeLater; do we care?
         override suspend fun visitIf(n: IfST) = when {

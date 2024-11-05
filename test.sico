@@ -67,7 +67,13 @@ resx(2)
 
 
 
+.macro foo(x) {
+    .define X x
+    X
+}
 
 
+foo(1)
+foo(3)
 
 

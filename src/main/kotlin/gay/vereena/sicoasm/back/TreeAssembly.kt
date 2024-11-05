@@ -47,6 +47,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
+        override suspend fun visitIdent(n: IdentST) = visitExpr(lookupBinding(n.value).value as ExprST) // TODO: don't just cast to ExprST
         override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
         override suspend fun visitUnary(n: UnaryST) = evalMaybeLater(n)
         override suspend fun visitBinary(n: BinaryST) = evalMaybeLater(n)
@@ -61,9 +62,9 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
                 .also { popLabels()}
         }
 
-        override suspend fun visitDefine(n: DefineST) = n.also {
+        override suspend fun visitDefine(n: DefineST) = EmptyST.also {
             if(n.value is PosST) scope[n.name.value] = PosST
-            else scope[n.name.value] = eval(n.value, null).toAST()
+            else scope[n.name.value] = eval(n.value).toAST()
             notifyOf(Pair(n.name, scope), NameBound)
         }
 
@@ -91,7 +92,6 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitBlank(n: BlankST) = ice()
         override suspend fun visitDeferred(n: DeferredST) = ice()
         override suspend fun visitBool(n: BoolST) = ice()
-        override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitIf(n: IfST) = ice()
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
         override suspend fun visitMacro(n: MacroST) = ice()
