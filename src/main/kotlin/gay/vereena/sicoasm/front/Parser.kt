@@ -18,13 +18,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
 
     private var currentScope = Scope()
-    private val currentScopeStack = Stack<Scope>()
 
     private fun <T> pushScope(action: (Scope) -> T): T {
-        currentScopeStack.push(currentScope)
         currentScope = Scope(currentScope)
         val result = action(currentScope)
-        currentScope = currentScopeStack.pop()
+        currentScope = currentScope.parent!!
         return result
     }
 
@@ -107,10 +105,6 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
     }
 
-    private fun parseString() = StringST(expectNext(STRING).value)
-
-    private fun parseIdent() = IdentST(expectNext(IDENT).value)
-
     private fun parseInt(): IntST {
         val v = expectNext(INT).value
         return IntST(when {
@@ -119,6 +113,10 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             else -> v.toInt()
         })
     }
+
+    private fun parseIdent() = IdentST(expectNext(IDENT).value)
+
+    private fun parseString() = StringST(expectNext(STRING).value)
 
     private fun parseBlank(): BlankST {
         expectDirectiveNext("blank")
@@ -133,6 +131,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             "false" -> BoolST(false).also { next() }
             else -> parseIdent()
         }
+        accept(STRING) -> parseString()
         acceptDirective("blank") -> parseBlank()
         acceptNext(POS) -> PosST
         acceptNext(LPAREN) -> parseExpr().also { expectNext(RPAREN) }
@@ -149,9 +148,9 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun parseUnary(): ExprST {
-        if (accept(SUB)) {
+        if (accept(SUB, BIT_NOT, NOT)) {
             val ops = mutableListOf<UnaryOP>()
-            while (accept(SUB)) {
+            while (more() && accept(SUB, BIT_NOT, NOT)) {
                 ops += parseUnaryOp()
                 next()
             }
@@ -189,13 +188,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseBinary(next: () -> ExprST, vararg types: TokenType): ExprST {
         var ret = next()
-
         while (more() && accept(*types)) {
             val op = parseBinaryOp()
             this.next()
             ret = BinaryST(op, ret, next())
         }
-
         return ret
     }
 

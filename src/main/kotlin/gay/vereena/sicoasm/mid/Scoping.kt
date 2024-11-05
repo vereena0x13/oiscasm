@@ -7,7 +7,7 @@ import gay.vereena.sicoasm.util.*
 
 data class Binding(val value: Node, val export: Boolean = false)
 
-class Scope(private val parent: Scope? = null) {
+class Scope(val parent: Scope? = null) {
     private val bindings = mutableMapOf<String, Binding>()
     private val includes: MutableSet<Scope> = if(parent?.includes == null) mutableSetOf() else parent.includes.toMutableSet()
 
