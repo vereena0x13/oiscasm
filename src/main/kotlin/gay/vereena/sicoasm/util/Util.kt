@@ -1,19 +1,21 @@
 package gay.vereena.sicoasm.util
 
-import kotlin.system.exitProcess
+import kotlin.system.*
 
-fun <T> eprint(x: T) = System.err.print(x)
-fun <T> eprintln(x: T) = System.err.println(x)
-fun eprintln() = System.err.println()
+import com.github.ajalt.mordant.terminal.*
+import com.github.ajalt.mordant.rendering.TextColors.*
 
-fun ice(x: Any? = null): Nothing = throw AssertionError("INTERNAL COMPILER ERROR" + if (x == null) "" else ": $x")
+
+val TERMINAL = Terminal()
+
+
+fun ice(x: Any? = null): Nothing = panic(("INTERNAL COMPILER ERROR" + if (x == null) "" else ": $x"))
 
 fun panic(msg: String? = null): Nothing {
-    eprintln("panic: ${msg ?: "???"}")
+    TERMINAL.println(red("panic: ${msg ?: "???"}"))
+    Throwable().printStackTrace()
     exitProcess(1)
 }
-
-fun nop() {}
 
 fun escape(s: String) = s.map {
     when (it) {
@@ -22,4 +24,4 @@ fun escape(s: String) = s.map {
         '\t' -> "\\t"
         else -> "$it"
     }
-}.fold("", { acc, it -> "$acc$it" })
+}.fold("") { acc, it -> "$acc$it" }

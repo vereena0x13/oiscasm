@@ -1,7 +1,5 @@
 package gay.vereena.sicoasm.back
 
-import kotlin.math.*
-
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.mid.*
@@ -22,21 +20,18 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         labels.putAll(l)
     }
 
-    fun popLabels() {
-        labels = labelsStack.pop()
-    }
+    fun popLabels() { labels = labelsStack.pop() }
 
     val treeAssembler = object : ASTAdapter {
         var blockLabels: Set<String>? = null
 
-        suspend fun eval(n: ExprST): Int = evalExpr(n) { asm.pos() }
+        suspend fun eval(n: ExprST) = evalExpr(n) { asm.pos() }
 
         override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
         override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
         override suspend fun visitIdent(n: IdentST) = ice()
         override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitLabelRef(n: LabelRefST) =
-            n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
+        override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
 
         override suspend fun visitUnary(n: UnaryST) = IntST(eval(n).also { asm.emit(it) })
         override suspend fun visitBinary(n: BinaryST) = IntST(eval(n).also { asm.emit(it) })

@@ -38,7 +38,7 @@ start:
 }
 
 .macro clear(x) {
-    x x ?+1
+    .repeat 2 { x } ?+1
 }
 
 .macro nop() {
@@ -50,13 +50,6 @@ l0:
     t1 t1 l0
 l0:
 }
-*/
-
-/*
-.macro clear(x) {
-    .repeat 2 { x } ?+1
-}
-
 
 .macro resx(x) {
     .repeat 2 {
@@ -71,13 +64,6 @@ resx(3)
 */
 
 
-.macro foo(n) {
-    .repeat n {
-        1 << i
-    }
-}
+0b1010
 
-.define X foo(4)
-
-X
-X
+0xAAAA

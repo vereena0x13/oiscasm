@@ -58,7 +58,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             val xs = mutableListOf<Node>()
             (0..<count).forEach { i ->
                 withScope(Scope(scope)) {
-                    scope[n.iteratorName] = IntST(i)
+                    if(n.iteratorName != null) scope[n.iteratorName] = IntST(i)
                     n.body.forEach { xs += visit(it) }
                 }
             }

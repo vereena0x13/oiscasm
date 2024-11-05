@@ -79,7 +79,6 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
 
         override suspend fun visitDefine(n: DefineST) = n.also {
             scope[n.name.value] = n.value
-            println("define $n")
             notifyOf(n.name, NameBound)
         }
 

@@ -8,14 +8,10 @@ import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.*
-import com.github.ajalt.mordant.terminal.*
 
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.front.*
 import gay.vereena.sicoasm.back.*
-
-
-val TERMINAL = Terminal()
 
 
 private class CLI : NoOpCliktCommand() {
@@ -39,7 +35,7 @@ private class Build : CliktCommand(name = "build") {
     override fun run() {
         val driver = Driver()
 
-        driver.enqueueWorker(parse(file, outFile))
+        driver.enqueueWorker(parse(file))
 
         driver.onNotify(TreeAssembled::class) { _, notif ->
             val code = (notif as TreeAssembled).code

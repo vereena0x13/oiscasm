@@ -8,7 +8,6 @@ import gay.vereena.sicoasm.util.*
 
 
 sealed class Node : WorkUnit
-
 sealed class ExprST : Node()
 
 enum class UnaryOP {
@@ -57,7 +56,7 @@ data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
 data class MacroST(val name: IdentST, val params: List<String>, val body: List<Node>, val scope: Scope) : Node()
-data class RepeatST(val count: ExprST, val iteratorName: String, val body: List<Node>, val scope: Scope) : Node()
+data class RepeatST(val count: ExprST, val iteratorName: String?, val body: List<Node>, val scope: Scope) : Node()
 data class IncludeST(val path: String) : Node()
 data class FileST(val lexer: Lexer, val includes: List<IncludeST>, val body: List<Node>, val scope: Scope) : Node()
 

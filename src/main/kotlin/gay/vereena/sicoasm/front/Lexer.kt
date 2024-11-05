@@ -85,6 +85,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     private fun isDigit(c: Char): Boolean = c in '0'..'9'
     private fun isIdent(c: Char): Boolean = isLetter(c) || isDigit(c) || c == '_'
 
+
     private var start: Int = 0
     private var pos: Int = 0
     private var line: Int = 1
@@ -93,6 +94,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     private var tokenIndex: Int = 0
     private val index2Line = mutableMapOf<Int, Int>() // NOTE TODO: This is kinda dumb...
 
+
     init {
         var line = 1
         source.indices.forEach { i ->
@@ -100,6 +102,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
             index2Line[i] = line
         }
     }
+
 
     private fun more() = pos < source.length
 
@@ -138,6 +141,8 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         }
         return true
     }
+
+    private fun acceptRun(valid: String) { while(more() && valid.contains(peek())) next() }
 
     private fun emit(type: TokenType, str: String? = null, col: Int = 0, span: Span? = null) {
         val s = str ?: current()
@@ -282,8 +287,16 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                         emit(DIRECTIVE, source.substring(start + 1, pos))
                     }
                     isDigit(c) -> {
-                        while (more() && isDigit(peek())) next()
-                        emit(INT)
+                        if(c == '0' && (peek() == 'x' || peek() == 'b')) {
+                            when {
+                                accept('x') -> acceptRun("0123456789abcdefABCDEF")
+                                accept('b') -> acceptRun("01")
+                                else -> unexpected(peek().toString())
+                            }
+                        } else {
+                            while (more() && isDigit(peek())) next()
+                        }
+                        emit(INT, current())
                     }
                     else -> unexpected(c.toString())
                 }

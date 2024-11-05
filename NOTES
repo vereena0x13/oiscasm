@@ -1,0 +1,10 @@
+Features we probably/may want:
+    - segments
+    - linking
+        - .cfg config file for linking
+    - rename to oiscasm
+        - we could use this for not only SICO, but SUBLEQ or others too
+            - would need (optional) negative number support for SUBLEQ
+
+TODOs:
+    - flesh out the bitWidth functionality

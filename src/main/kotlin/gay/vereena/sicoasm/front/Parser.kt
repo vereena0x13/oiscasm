@@ -35,11 +35,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return current()
     }
 
-    private fun next(): Token {
-        val t = current()
-        index++
-        return t
-    }
+    private fun next() = current().also { index++ }
 
     private fun more(): Boolean = index < tokens.size
 
@@ -63,11 +59,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         unexpected(false, *valid)
     }
 
-    private fun expectNext(vararg valid: TokenType): Token {
-        val cur = expect(*valid)
-        next()
-        return cur
-    }
+    private fun expectNext(vararg valid: TokenType) = expect(*valid).also { next() }
 
     private fun unexpected(not: Boolean = false, expected: String? = null): Nothing {
         if (reportErrors) {
@@ -78,7 +70,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             } else {
                 ""
             }
-            Throwable().printStackTrace()
+            Throwable().printStackTrace() // NOTE: remove for non-debug
             scope.reportFatal(lexer.formatError("Unexpected token: '${t.value}' (${t.type})$es", t), true)
         } else {
             throw ParseException()
@@ -90,10 +82,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         else unexpected(not, expected.joinToString(", ") { "$it" })
     }
 
-    private fun acceptDirective(value: String): Boolean {
-        if (accept(DIRECTIVE)) return current().value == value
-        return false
-    }
+    private fun acceptDirective(value: String) = accept(DIRECTIVE) && current().value == value
 
     private fun expectDirectiveNext(value: String): Token {
         val t = expectNext(DIRECTIVE)
@@ -111,8 +100,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         } catch (_: ParseException) {
             reportErrors = true
             index = oldIndex
-            if (retry != null) retry()
-            else null
+            if (retry != null) retry() else null
         } finally {
             reportErrors = true
         }
@@ -123,7 +111,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun parseIdent(): IdentST = IdentST(expectNext(IDENT).value)
 
     private fun parseInt(): IntST {
-        return IntST(expectNext(INT).value.toInt()) // TODO
+        val v = expectNext(INT).value
+        println(v)
+        return IntST(when {
+            v.startsWith("0x") -> v.substring(2).toInt(16)
+            v.startsWith("0b") -> v.substring(2).toInt(2)
+            else -> v.toInt()
+        })
     }
 
     private fun parseAtom(): ExprST = when {
@@ -243,7 +237,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return MacroCallST(name, args)
     }
 
-    private fun parseMacro() = pushScope() {
+    private fun parseMacro() = pushScope {
         expectDirectiveNext("macro")
 
         val name = parseIdent()
@@ -267,7 +261,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         MacroST(name, params, body, it)
     }
 
-    private fun parseRepeat() = pushScope() {
+    private fun parseRepeat() = pushScope {
         expectDirectiveNext("repeat")
 
         val count = parseExpr()
@@ -285,12 +279,13 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         expectDirectiveNext("res")
         val count = parseExpr()
         val value = if (acceptNext(COMMA)) parseExpr() else IntST(0)
-        return RepeatST(count, "_i", listOf(value), currentScope)
+        return RepeatST(count, null, listOf(value), currentScope)
     }
 
     // TODO: think of a name for this
     private fun parse2(): Node {
         if (acceptNext(IDENT)) {
+            // TODO: this is dumb; stop it.
             val st = parseWithRetry({
                 if (accept(LPAREN)) {
                     prev()
@@ -326,7 +321,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 }
 
-fun parse(file: File, outFile: File? = null) = worker(WorkerName("parse")) {
+fun parse(file: File) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
     val ast = parser.parse()

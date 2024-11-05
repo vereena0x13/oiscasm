@@ -4,7 +4,6 @@ import kotlin.system.exitProcess
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 
-import gay.vereena.sicoasm.*
 import gay.vereena.sicoasm.util.*
 
 
@@ -34,9 +33,7 @@ fun WorkerScope.notifyOf(value: WorkUnit, notif: Notification) = withExt(WithDri
 
 fun WorkerScope.onNotify(notif: KClass<out Notification>, it: (WorkUnit, Notification) -> Unit) = withExt(WithDriver) { driver.onNotify(notif, it) }
 
-fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) {
-    driver.reportError(e)
-}
+fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) { driver.reportError(e) }
 
 fun <T> WorkerScope.reportFatal(e: T, stop: Boolean = false): Nothing = withExt(WithDriver) {
     reportError(e)
@@ -184,8 +181,7 @@ class Driver {
         return when {
             workersBlocked > 0 -> {
                 val s = if (workersBlocked > 1) "s" else ""
-                eprintln("Terminated with $workersBlocked error$s!")
-                exitProcess(1)
+                panic("Terminated with $workersBlocked error$s!")
             }
             errors > 0 -> false
             else -> {
