@@ -2,13 +2,17 @@ package gay.vereena.sicoasm
 
 import java.io.*
 
-import com.amazon.ion.system.*
-import com.amazon.ionelement.api.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+
+import com.akuleshov7.ktoml.*
+import com.akuleshov7.ktoml.source.*
 
 import gay.vereena.sicoasm.driver.*
 import gay.vereena.sicoasm.util.*
 
 
+@Serializable
 data class DebugConfig(
     val printParsedAst: Boolean,
     val printScopedAst: Boolean,
@@ -16,9 +20,10 @@ data class DebugConfig(
     val printAssembledAst: Boolean
 )
 
+@Serializable
 data class Config(
     var bitWidth: Int,
-    val debugCfg: DebugConfig
+    val debug: DebugConfig
 )
 
 
@@ -31,7 +36,7 @@ val WorkerScope.config get() = extensions[WithConfig]!!.config
 
 fun defaultConfig() = Config(
     bitWidth = 16,
-    debugCfg = DebugConfig(
+    debug = DebugConfig(
         printParsedAst = false,
         printScopedAst = false,
         printExpandedAst = false,
@@ -39,35 +44,24 @@ fun defaultConfig() = Config(
     )
 )
 
-fun loadConfigFromIonFile(cfgFile: File): Config {
-    var bitWidth            = 16
-    var printParsedAst      = false
-    var printScopedAst      = false
-    var printExpandedAst    = false
-    var printAssembledAst   = false
-
-    val reader = IonReaderBuilder
-        .standard()
-        .build(cfgFile.inputStream())
-    val c = loadSingleElement(reader).asStruct()
-
-    if(c.containsField("bitWidth")) bitWidth = c["bitWidth"].asInt().longValue.toInt()
-
-    if(c.containsField("debug")) {
-        val d = c["debug"].asStruct()
-        if(c.containsField("printParsedAst")) printParsedAst = d["printParsedAst"].asBoolean().booleanValue
-        if(d.containsField("printScopedAst")) printScopedAst = d["printScopedAst"].asBoolean().booleanValue
-        if(d.containsField("printExpandedAst")) printExpandedAst = d["printExpandedAst"].asBoolean().booleanValue
-        if(d.containsField("printAssembledAst")) printAssembledAst = d["printAssembledAst"].asBoolean().booleanValue
-    }
-
-    return Config(
-        bitWidth = bitWidth,
-        debugCfg = DebugConfig(
-            printParsedAst = printParsedAst,
-            printScopedAst = printScopedAst,
-            printExpandedAst = printExpandedAst,
-            printAssembledAst = printAssembledAst
-        )
+fun loadConfig(cfgFile: File): Config {
+    val inputConfig = TomlInputConfig(
+        ignoreUnknownNames = false,
+        allowEmptyValues = false,
+        allowNullValues = false,
+        allowEscapedQuotesInLiteralStrings = true,
+        allowEmptyToml = false
     )
+    val outputConfig = TomlOutputConfig(
+        indentation = TomlIndentation.FOUR_SPACES
+    )
+    val toml = Toml(inputConfig, outputConfig)
+
+    if(cfgFile.exists()) {
+        return toml.decodeFromStream<Config>(FileInputStream(cfgFile))
+    } else {
+        val cfg = defaultConfig()
+        cfgFile.writeText(toml.encodeToString<Config>(cfg))
+        return cfg
+    }
 }

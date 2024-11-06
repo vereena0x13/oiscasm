@@ -1,0 +1,7 @@
+bitWidth = 16
+
+[debug]
+    printParsedAst = false
+    printScopedAst = false
+    printExpandedAst = false
+    printAssembledAst = true

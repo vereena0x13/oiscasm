@@ -95,6 +95,6 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
     }
 
     val scopedAst = nameBinder.visitFile(ast)
-    if(config.debugCfg.printScopedAst == true) println("scopedAst:\n${astToString(scopedAst)}")
+    if(config.debug.printScopedAst) println("scopedAst:\n${astToString(scopedAst)}")
     enqueueWorker(expansion(scopedAst))
 }

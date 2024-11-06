@@ -255,8 +255,8 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                             when {
                                 accept('\\') -> sb.append('\\')
                                 accept('"') -> sb.append('"')
-                                accept('t') -> sb.append('\t')
                                 accept('b') -> sb.append('\b')
+                                accept('t') -> sb.append('\t')
                                 accept('n') -> sb.append('\n')
                                 accept('r') -> sb.append('\r')
                                 accept('u') -> {

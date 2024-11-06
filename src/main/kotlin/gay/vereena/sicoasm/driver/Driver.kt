@@ -1,6 +1,5 @@
 package gay.vereena.sicoasm.driver
 
-import gay.vereena.sicoasm.WithConfig
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 

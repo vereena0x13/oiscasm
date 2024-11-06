@@ -23,11 +23,11 @@ private class Build : CliktCommand(name = "build") {
         .default(File("out.bin"))
 
     val cfgFile: File? by option("--cfg")
-        .file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
+        .file(mustExist = false, canBeDir = false, mustBeReadable = false, canBeSymlink = false)
 
 
     override fun run() {
-        val cfg = if(cfgFile != null) loadConfigFromIonFile(cfgFile!!) else defaultConfig()
+        val cfg = if(cfgFile != null) loadConfig(cfgFile!!) else defaultConfig()
         build(inFile, cfg) { code ->
             writeOutput(outFile, code, cfg.bitWidth)
         }
