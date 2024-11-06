@@ -6,7 +6,12 @@ import kotlin.io.path.*
 import io.kotest.core.spec.style.FunSpec
 
 
-fun readExpected(path: Path) = path.toFile().readLines().map { it.toInt() }.toIntArray()
+val SPLIT_SPACE_REGEX = "\\s+".toRegex()
+fun readExpected(path: Path) = path
+    .toFile()
+    .readLines()
+    .flatMap { it.trim().split(SPLIT_SPACE_REGEX).map { x -> x.toInt() } }
+    .toIntArray()
 
 class E2ETests : FunSpec({
     Path("src/test/resources/e2e")

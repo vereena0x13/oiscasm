@@ -8,7 +8,7 @@ import gay.vereena.sicoasm.util.*
 
 
 sealed class Value {
-    inline fun <reified T: Value> check(): T {
+    private inline fun <reified T: Value> check(): T {
         if(this !is T) panic() // TODO: actual error reporting
         return this
     }
