@@ -1,12 +1,12 @@
 package gay.vereena.sicoasm.util
 
+import java.io.*
+
+import kotlin.math.*
 import kotlin.system.*
 
 import com.github.ajalt.mordant.terminal.*
 import com.github.ajalt.mordant.rendering.TextColors.*
-import java.io.DataOutputStream
-import java.io.File
-import java.io.FileOutputStream
 
 
 val TERMINAL = Terminal()
@@ -40,10 +40,12 @@ fun applyBitWidth(x: Int, bitWidth: Int) = when(bitWidth) {
     else -> ice()
 }
 
+
 fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) {
     val dout = DataOutputStream(FileOutputStream(outFile))
     xs.forEach {
-        val x = applyBitWidth(it, bitWidth) // NOTE TODO: this is not needed, right? -- waiting for the assert to fail... ig...
+        // NOTE TODO: this is not needed, right? -- waiting for the assert to fail... ig...
+        val x = applyBitWidth(it, bitWidth)
         assert(x == it)
         if(bitWidth == 32) {
             dout.writeByte((x shr 24) and 0xFF)
@@ -55,3 +57,12 @@ fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) {
     dout.flush()
     dout.close()
 }
+
+
+fun formatIntTable(xs: IntArray, cols: Int, maxl: Int = 4) =
+    max(maxl, xs.max().toString().length).let { padTo -> xs
+        .map { it.toString().padStart(padTo) }
+        .chunked(cols)
+        .map { it.joinToString("") }
+        .reduce() { a, b -> "$a\n$b" }
+    }

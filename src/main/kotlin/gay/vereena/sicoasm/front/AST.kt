@@ -10,11 +10,13 @@ data object EmptyST : Node()
 sealed class ExprST : Node()
 data object EmptyExprST : ExprST()
 
+
 data class DeferredST(val pos: Int, val expr: ExprST, val labels: Map<String, Label>) : ExprST() {
     companion object {
-        val MAGIC_NUMBER = "D3F3553D".toLong(16).toInt()
+        const val MAGIC_NUMBER = 0xD3F3553D.toInt()
     }
 }
+
 
 enum class UnaryOP {
     NEG,

@@ -59,7 +59,7 @@ suspend fun WorkerScope.lookupBinding(name: String, scope: Scope = this.scope, w
     if (binding == null) {
         if(wait) waitOn<NameBound>(Pair(name, scope)) {
             t.printStackTrace()
-            ws.reportError("Undeclared identifier: $name")
+            ws.reportError("Undeclared identifier: $name") // TODO: pretty error w/ Lexer
         }
         else return@with null
     }
@@ -78,6 +78,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         }
 
         override suspend fun visitDefine(n: DefineST) = n.also {
+            // NOTE TODO: we should only do this if n.value can be computed
             scope[n.name.value] = n.value
             notifyOf(Pair(n.name, scope), NameBound)
         }

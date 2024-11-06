@@ -24,7 +24,7 @@ z:          0
 t0:         0
 
 text:       "Hello, World!\n"
-len:        ?-text
+len:        len-text
 neg:        -1
 one:        1
 

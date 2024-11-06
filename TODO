@@ -1,4 +1,4 @@
-    - end-to-end test suite
+    - more E2E tests
     - flesh out the bitWidth functionality
     - segments
     - linking
@@ -8,3 +8,14 @@
             - would need (optional) negative number support for SUBLEQ
     - .ident, etc.
         - to allow generating labels
+    - detection and reporting of circular dependencies
+        - for example, the following code:
+            l0:     .repeat N0 i+1
+            l1:     .define N0 l1-l0
+          is invalid beacuse it creates a circular dependency.
+          in order to know how many times to run the .repeat,
+          it needs to know the address of l0 _and_ l1, but
+          the address of l1 depends on how many times the
+          .repeat is run.
+          this is a trivial case; it can obviously become much
+          more complex, with many layers of indirection.

@@ -48,3 +48,13 @@ l0:
 }
 
 
+
+
+.define COUNT 4
+
+.repeat COUNT i+1
+
+
+
+
+
