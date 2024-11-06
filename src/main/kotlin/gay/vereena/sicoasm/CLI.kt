@@ -22,7 +22,7 @@ private class Build : CliktCommand(name = "build") {
         .file(mustExist = false, canBeDir = false, mustBeWritable = true, canBeSymlink = false)
         .default(File("out.bin"))
 
-    val cfgFile: File? by option("--cfg")
+    val cfgFile: File? by option("-c", "--cfg")
         .file(mustExist = false, canBeDir = false, mustBeReadable = false, canBeSymlink = false)
 
 
