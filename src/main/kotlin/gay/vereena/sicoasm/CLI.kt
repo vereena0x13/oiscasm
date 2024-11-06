@@ -22,22 +22,15 @@ private class Build : CliktCommand(name = "build") {
         .file(mustExist = false, canBeDir = false, mustBeWritable = true, canBeSymlink = false)
         .default(File("out.bin"))
 
-    val bitWidth: Int by option("-w", "--width")
-        .int()
-        .default(16)
-        .check { it == 8 || it == 16 || it == 32 }
+    val cfgFile: File? by option("--cfg")
+        .file(mustExist = true, canBeDir = false, mustBeReadable = true, canBeSymlink = false)
 
-    val debug: Boolean by option("-d", "--debug")
-        .flag(default = false)
 
     override fun run() {
-        build(Config(
-            inFile,
-            bitWidth,
-            debug,
-        ) { code ->
-            writeOutput(outFile, code, bitWidth)
-        })
+        val cfg = if(cfgFile != null) loadConfigFromIonFile(cfgFile!!) else defaultConfig()
+        build(inFile, cfg) { code ->
+            writeOutput(outFile, code, cfg.bitWidth)
+        }
     }
 }
 

@@ -102,7 +102,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
     val finalAst = treeAssembler.visit(ast)
     val code = asm.assemble()
 
-    if(config.debug) {
+    if(config.debugCfg.printAssembledAst == true) {
         println("final AST:\n${astToString(finalAst)}")
 
         if (false) {

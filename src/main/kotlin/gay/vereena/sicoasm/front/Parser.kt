@@ -344,6 +344,6 @@ fun parse(file: File) = worker(WorkerName("parse")) {
     val lexer = Lexer(this, file.name, file.readText())
     val parser = Parser(this, lexer)
     val ast = parser.parse()
-    if(config.debug) println("parsedAst:\n${astToString(ast)}")
+    if(config.debugCfg.printParsedAst == true) println("parsedAst:\n${astToString(ast)}")
     enqueueWorker(bindNames(ast))
 }

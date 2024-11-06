@@ -1,0 +1,9 @@
+{
+    bit_width: 16,
+    debug: {
+        //printParsedAst: true,
+        //printScopedAst: true,
+        //printExpandedAst: true,
+        printAssembledAst: true
+    }
+}

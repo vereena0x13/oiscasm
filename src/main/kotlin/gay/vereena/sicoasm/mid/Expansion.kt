@@ -67,6 +67,6 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
     }
 
     val expandedAst = expander.visit(ast)
-    if(config.debug) println("expanded AST:\n${astToString(expandedAst)}")
+    if(config.debugCfg.printExpandedAst == true) println("expanded AST:\n${astToString(expandedAst)}")
     enqueueWorker(assembleTree(expandedAst as FileST))
 }

@@ -177,14 +177,12 @@ class Driver(private val exts: ExtensionContext = ExtensionContext.Empty) {
             }
             errors > 0 -> false
             else -> {
-                if(exts[WithConfig.Key]?.config?.debug == true) {
-                    TERMINAL.println("Finished in $duration ms!")
-                    TERMINAL.println("  Jobs: $retired")
-                    TERMINAL.println("  Iterations: $iterations")
-                    TERMINAL.println("  Waits: $waits")
-                    TERMINAL.println("  Notifies: $notifies")
-                    TERMINAL.println()
-                }
+                TERMINAL.println("Finished in $duration ms!")
+                TERMINAL.println("  Jobs: $retired")
+                TERMINAL.println("  Iterations: $iterations")
+                TERMINAL.println("  Waits: $waits")
+                TERMINAL.println("  Notifies: $notifies")
+                TERMINAL.println()
                 true
             }
         }
