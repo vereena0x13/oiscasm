@@ -1,3 +1,4 @@
+/*
 .define NL 10
 .define EXIT -1
 .define PUTC -2
@@ -46,13 +47,11 @@ l0:
     t1 t1 l0
 l0:
 }
+*/
 
 
 
 
-.define COUNT 4
-
-.repeat COUNT i+1
 
 
 

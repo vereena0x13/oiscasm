@@ -77,11 +77,11 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
             notifyOf(Pair(n, scope), NameBound)
         }
 
-        override suspend fun visitDefine(n: DefineST) = n.also {
-            // NOTE TODO: we should only do this if n.value can be computed
-            scope[n.name.value] = n.value
-            notifyOf(Pair(n.name, scope), NameBound)
-        }
+        override suspend fun visitDefine(n: DefineST) = try {
+            scope[n.name.value] = eval(n.value, null).toAST()
+            notifyOf(Pair(n, scope), NameBound)
+            EmptyST
+        } catch(_: Throwable) { n }
 
         override suspend fun visitMacro(n: MacroST) = n.also {
             scope[n.name.value] = n
@@ -92,7 +92,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         override suspend fun visitMacroCall(n: MacroCallST) = n
         override suspend fun visitRepeat(n: RepeatST) = n
 
-        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is DefineST }, scope)
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is EmptyST }, scope)
     }
 
     val scopedAst = nameBinder.visitFile(ast)
