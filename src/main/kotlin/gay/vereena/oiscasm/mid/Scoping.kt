@@ -77,13 +77,15 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
             notifyOf(Pair(n, scope), NameBound)
         }
 
+        // NOTE TODO: relying on an exception here, using try/catch
+        // for control flow, is stupid and bad.
         override suspend fun visitDefine(n: DefineST) = try {
             scope[n.name.value] = eval(n.value, null).toAST()
             notifyOf(Pair(n, scope), NameBound)
             EmptyST
         } catch(_: Throwable) { n }
 
-        override suspend fun visitMacro(n: MacroST) = n.also {
+        override suspend fun visitMacro(n: MacroST) = EmptyST.also {
             scope[n.name.value] = n
             notifyOf(Pair(n.name, scope), NameBound)
         }
@@ -92,7 +94,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         override suspend fun visitMacroCall(n: MacroCallST) = n
         override suspend fun visitRepeat(n: RepeatST) = n
 
-        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is MacroST && it !is EmptyST }, scope)
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is EmptyST }, scope)
     }
 
     val scopedAst = nameBinder.visitFile(ast)

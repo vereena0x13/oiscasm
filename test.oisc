@@ -1,0 +1,9 @@
+.macro foo() {
+    42
+}
+
+.macro bar() {
+    foo()
+}
+
+bar()

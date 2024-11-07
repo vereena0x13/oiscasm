@@ -29,6 +29,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
+            println(n)
             val macro = lookupBinding(n.name.value).value
             val block = if (macro is MacroST) {
                 if (n.args.size > macro.params.size) ws.reportFatal(
