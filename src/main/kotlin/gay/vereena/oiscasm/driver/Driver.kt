@@ -165,7 +165,7 @@ class Driver(private val exts: ExtensionContext = ExtensionContext.Empty) {
 
         assert(running.isEmpty())
 
-        val workersBlocked = blocked
+        val workersBlocked = blocked.asSequence()
             .map { it.value.size }
             .fold(0) { x, y -> x + y }
 

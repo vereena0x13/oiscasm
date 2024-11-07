@@ -331,30 +331,31 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         return result
     }
 
-    fun formatError(error: String, vararg ts: Token): String {
-        ts.sortBy { it.index }
+    fun formatError(error: String, vararg ts: Token) = with(StringBuilder()) {
         assert(ts.isNotEmpty())
-        val result = StringBuilder()
-        val theSpan = ts.map { it.span }.reduce { acc, it -> it union acc }
+        ts.sortBy { it.index }
+        val theSpan = ts.asSequence().map { it.span }.reduce { acc, it -> it union acc }
         val lines = getLinesInSpan(theSpan)
-        val rawlinenos = ts.flatMap { (it.span.start..it.span.end).map { i -> indexToLine(i)!! } }.distinct()
+        val rawlinenos = ts.asSequence()
+            .flatMap { (it.span.start..it.span.end).map { i -> indexToLine(i) } }
+            .distinct().toList()
         assert(lines.size == rawlinenos.size)
         assert(lines.isNotEmpty())
-        result.append("${boldRed("error:")} $error\n")
-        result.append("   ${boldBlue("-->")} $file\n")
-        result.append("    ${boldBlue("|")}\n")
+        append("${boldRed("error:")} $error\n")
+        append("   ${boldBlue("-->")} $file\n")
+        append("    ${boldBlue("|")}\n")
         lines.zip(rawlinenos).forEach { (line, rawlineno) ->
             val lineno = rawlineno.toString().padStart(3, ' ')
-            result.append("${boldBlue("$lineno |")} $line\n")
+            append("${boldBlue("$lineno |")} $line\n")
         }
-        result.append("    ${boldBlue("|")}")
+        append("    ${boldBlue("|")}")
         if (ts.size == 1) {
             val col = ts.fold(ts[0].col) { acc, it -> min(acc, it.col) }
-            repeat(col) { result.append(' ') }
+            repeat(col) { append(' ') }
             val span = ts.fold(ts[0].span) { acc, it -> acc union it.span }
-            result.append(boldRed(span.range.joinToString("") { "^" }))
+            append(boldRed(span.range.joinToString("") { "^" }))
         }
-        result.append("\u001b[0m")
-        return result.toString()
+        append("\u001b[0m")
+        toString()
     }
 }

@@ -37,17 +37,15 @@ fun defaultConfig() = Config(
 )
 
 fun loadConfig(cfgFile: File): Config {
-    val inputConfig = TomlInputConfig(
+    val toml = Toml(inputConfig = TomlInputConfig(
         ignoreUnknownNames = false,
         allowEmptyValues = false,
         allowNullValues = false,
         allowEscapedQuotesInLiteralStrings = true,
         allowEmptyToml = false
-    )
-    val outputConfig = TomlOutputConfig(
+    ), outputConfig = TomlOutputConfig(
         indentation = TomlIndentation.FOUR_SPACES
-    )
-    val toml = Toml(inputConfig, outputConfig)
+    ))
 
     if(cfgFile.exists()) {
         return toml.decodeFromStream<Config>(FileInputStream(cfgFile))

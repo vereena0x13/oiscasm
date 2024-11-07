@@ -1,5 +1,7 @@
 package gay.vereena.oiscasm.mid
 
+import kotlinx.coroutines.flow.*
+
 import gay.vereena.oiscasm.*
 import gay.vereena.oiscasm.driver.*
 import gay.vereena.oiscasm.front.*
@@ -29,28 +31,23 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
         }.also { notifyOf(n, Expanded) }
 
         override suspend fun visitMacroCall(n: MacroCallST): Node {
-            println(n)
             val macro = lookupBinding(n.name.value).value
-            val block = if (macro is MacroST) {
-                if (n.args.size > macro.params.size) ws.reportFatal(
-                    "Macro '${n.name.value}' expects ${macro.params.size} arguments; found ${n.args.size}",
-                    true
-                )
+            if(macro !is MacroST) ws.reportFatal("Attempt to call non-macro value '$macro'", true)
 
-                val args = mutableListOf<ExprST>()
-                args.addAll(n.args)
-                while(args.size < macro.params.size) args += EmptyExprST
+            if (n.args.size > macro.params.size) ws.reportFatal(
+                "Macro '${n.name.value}' expects ${macro.params.size} arguments; found ${n.args.size}",
+                true
+            )
 
-                withScope(Scope(scope)) {
-                    args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
-                    labels = findLabels(macro)
-                    BlockST(macro.body.map { visit(it) }.filter { it !is EmptyST }, scope).also { labels = null }
-                }
-            } else {
-                ws.reportFatal("Attempt to call non-macro value '$macro'", true)
-            }
-            notifyOf(n, MacroExpanded(macro, n, block))
-            return block
+            val args = mutableListOf<ExprST>()
+            args.addAll(n.args)
+            while(args.size < macro.params.size) args += EmptyExprST
+
+            return withScope(Scope(scope)) {
+                args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
+                labels = findLabels(macro)
+                BlockST(macro.body.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), scope).also { labels = null }
+            }.also { notifyOf(n, MacroExpanded(macro, n, it)) }
         }
 
         // NOTE TODO: can't support ComputeLater; do we care?

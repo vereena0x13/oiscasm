@@ -1,5 +1,7 @@
 package gay.vereena.oiscasm.mid
 
+import kotlinx.coroutines.flow.*
+
 import gay.vereena.oiscasm.*
 import gay.vereena.oiscasm.driver.*
 import gay.vereena.oiscasm.front.*
@@ -94,7 +96,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         override suspend fun visitMacroCall(n: MacroCallST) = n
         override suspend fun visitRepeat(n: RepeatST) = n
 
-        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is EmptyST }, scope)
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), scope)
     }
 
     val scopedAst = nameBinder.visitFile(ast)

@@ -1,5 +1,7 @@
 package gay.vereena.oiscasm.back
 
+import kotlinx.coroutines.flow.*
+
 import gay.vereena.oiscasm.config
 import gay.vereena.oiscasm.driver.*
 import gay.vereena.oiscasm.front.*
@@ -32,34 +34,32 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         private suspend fun eval(n: ExprST) = eval(n, evalCtx)
 
-        private suspend fun evalMaybeLater(n: ExprST): ExprST {
-            return try {
-                val value = eval(n)
-                if(value is IntValue) asm.emit(value.value)
-                value.toAST()
-            } catch(_: ComputeLater) {
-                val pos = asm.emit(DeferredST.MAGIC_NUMBER)
-                val replacer = object : ASTAdapter {
-                    override suspend fun visitPos(n: PosST): ExprST = IntST(pos)
-                }
-                DeferredST(pos, replacer.visitExpr(n), labels)
+        private suspend fun evalMaybeLater(n: ExprST) = try {
+            val value = eval(n)
+            if(value is IntValue) asm.emit(value.value)
+            value.toAST()
+        } catch(_: ComputeLater) {
+            val pos = asm.emit(DeferredST.MAGIC_NUMBER)
+            val replacer = object : ASTAdapter {
+                override suspend fun visitPos(n: PosST) = IntST(pos)
             }
+            DeferredST(pos, replacer.visitExpr(n), labels)
         }
 
-        override suspend fun visitInt(n: IntST) = n.also { asm.emit(it.value) }
-        override suspend fun visitString(n: StringST) = n.also { it.value.forEach { c -> asm.emit(c.code) } }
-        override suspend fun visitIdent(n: IdentST) = visitExpr(lookupBinding(n.value).value as ExprST) // TODO: don't just cast to ExprST
-        override suspend fun visitLabelRef(n: LabelRefST) = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
-        override suspend fun visitUnary(n: UnaryST) = evalMaybeLater(n)
-        override suspend fun visitBinary(n: BinaryST) = evalMaybeLater(n)
-        override suspend fun visitPos(n: PosST) = asm.pos().let { asm.emit(it); IntST(it) }
-        override suspend fun visitParen(n: ParenST) = visitExpr(n.value)
+        override suspend fun visitInt(n: IntST)             = n.also { asm.emit(it.value) }
+        override suspend fun visitString(n: StringST)       = n.also { it.value.forEach { c -> asm.emit(c.code) } }
+        override suspend fun visitIdent(n: IdentST)         = visitExpr(lookupBinding(n.value).value as ExprST) // TODO: don't just cast to ExprST
+        override suspend fun visitLabelRef(n: LabelRefST)   = n.also { asm.word(labels.getOrPut(n.value) { asm.label() }) }
+        override suspend fun visitUnary(n: UnaryST)         = evalMaybeLater(n)
+        override suspend fun visitBinary(n: BinaryST)       = evalMaybeLater(n)
+        override suspend fun visitPos(n: PosST)             = asm.pos().let { asm.emit(it); IntST(it) }
+        override suspend fun visitParen(n: ParenST)         = visitExpr(n.value)
 
-        override suspend fun visitLabel(n: LabelST) = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
+        override suspend fun visitLabel(n: LabelST)         = n.also { asm.mark(labels.getOrPut(n.value) { asm.label() }) }
 
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
-            BlockST(n.values.map { visit(it) }.filter { it !is EmptyST }, scope)
+            BlockST(n.values.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), scope)
                 .also { popLabels()}
         }
 
@@ -69,9 +69,9 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         }
 
         override suspend fun visitFile(n: FileST): FileST {
-            n.body.filterIsInstance<LabelST>().forEach { labels[it.value] = asm.label() }
+            n.body.asFlow().filterIsInstance<LabelST>().collect { labels[it.value] = asm.label() }
 
-            val f = FileST(n.lexer, n.includes, n.body.map { visit(it) }.filter { it !is EmptyST }, n.scope)
+            val f = FileST(n.lexer, n.includes, n.body.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), n.scope)
 
             val replacer = object : ASTAdapter {
                 override suspend fun visitDeferred(n: DeferredST): ExprST {
@@ -87,15 +87,15 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             return replacer.visitFile(f)
         }
 
-        override suspend fun visitEmpty(n: EmptyST) = ice()
+        override suspend fun visitEmpty(n: EmptyST)         = ice()
         override suspend fun visitEmptyExpr(n: EmptyExprST) = ice()
-        override suspend fun visitBlank(n: BlankST) = ice()
-        override suspend fun visitDeferred(n: DeferredST) = ice()
-        override suspend fun visitBool(n: BoolST) = ice()
-        override suspend fun visitIf(n: IfST) = ice()
+        override suspend fun visitBlank(n: BlankST)         = ice()
+        override suspend fun visitDeferred(n: DeferredST)   = ice()
+        override suspend fun visitBool(n: BoolST)           = ice()
+        override suspend fun visitIf(n: IfST)               = ice()
         override suspend fun visitMacroCall(n: MacroCallST) = ice()
-        override suspend fun visitMacro(n: MacroST) = ice()
-        override suspend fun visitRepeat(n: RepeatST) = ice()
+        override suspend fun visitMacro(n: MacroST)         = ice()
+        override suspend fun visitRepeat(n: RepeatST)       = ice()
     }
 
     val finalAst = treeAssembler.visit(ast)
