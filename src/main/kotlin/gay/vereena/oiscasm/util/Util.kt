@@ -58,10 +58,12 @@ fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) = with(DataOutputStr
 }
 
 
-fun formatIntTable(xs: IntArray, cols: Int, maxl: Int = 4) =
-    max(maxl, xs.max().toString().length).let { padTo -> xs
-        .map { it.toString().padStart(padTo) }
+fun formatIntTable(xs: IntArray, cols: Int, maxl: Int = 4): String {
+    if(xs.isEmpty()) return ""
+    return max(maxl, xs.maxOrNull().toString().length).let { padTo ->
+        xs.map { it.toString().padStart(padTo) }
         .chunked(cols)
         .map { it.joinToString("") }
         .reduce() { a, b -> "$a\n$b" }
     }
+}

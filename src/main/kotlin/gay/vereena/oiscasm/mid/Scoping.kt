@@ -63,7 +63,7 @@ suspend fun WorkerScope.lookupBinding(name: String, scope: Scope = this.scope, w
         }
         else return@with null
     }
-    scope[name]!!
+    binding!!
 }
 
 
