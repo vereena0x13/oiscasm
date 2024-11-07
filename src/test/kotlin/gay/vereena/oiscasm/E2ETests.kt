@@ -35,7 +35,7 @@ class E2ETests : FunSpec({
                     }
 
                     assert(code.size == expected.size) { errorString() }
-                    assert(code.zip(expected).map { (a, b) -> a == b }.fold(true) { a, b -> a && b }) { errorString() }
+                    assert(code.contentEquals(expected)) { errorString() }
                 }
             }
         }
