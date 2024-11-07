@@ -1,11 +1,11 @@
-package gay.vereena.sicoasm.front
+package gay.vereena.oiscasm.front
 
 import kotlin.math.*
 
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.util.*
 
-import gay.vereena.sicoasm.front.TokenType.*
+import gay.vereena.oiscasm.front.TokenType.*
 
 
 enum class TokenType {
@@ -81,35 +81,27 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     private fun isIdent(c: Char) = isLetter(c) || isDigit(c) || c == '_'
 
 
-    private var start: Int = 0
-    private var pos: Int = 0
-    private var line: Int = 1
-    private var col: Int = 1
-    private var tokens = mutableListOf<Token>()
-    private var tokenIndex: Int = 0
-    private val index2Line = mutableMapOf<Int, Int>() // NOTE TODO: This is kinda dumb...
+    private var start       = 0
+    private var pos         = 0
+    private var line        = 1
+    private var col         = 1
+    private var tokens      = mutableListOf<Token>()
+    private var tokenIndex  = 0
+    private val index2Line  = mutableListOf<Int>() // NOTE TODO: This is kinda dumb...
 
 
     init {
         var line = 1
         source.indices.forEach { i ->
             if (source[i] == '\n') line++
-            index2Line[i] = line
+            index2Line += line
         }
     }
 
 
     private fun more() = pos < source.length
-
     private fun peek(): Char = source[pos]
-
-    private fun next(): Char {
-        val c = peek()
-        pos++
-        col++
-        return c
-    }
-
+    private fun next() = peek().also { pos++; col++ }
     private fun current(): String = source.substring(start, pos)
 
     private fun accept(vararg valid: Char): Boolean {
@@ -131,7 +123,9 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         return true
     }
 
-    private fun acceptRun(valid: String) { while(more() && valid.contains(peek())) next() }
+
+    private fun acceptWhile(p: (c: Char) -> Boolean) { while(more() && p(peek())) next() }
+    private fun acceptRun(valid: String) = acceptWhile { valid.contains(it) }
 
     private fun emit(type: TokenType, str: String? = null, col: Int = 0, span: Span? = null) {
         val s = str ?: current()
@@ -151,21 +145,17 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
     )
 
     private fun skipWhitespace() {
-        while (more()) {
-            when (peek()) {
-                '\n' -> {
-                    line++
-                    col = 0
-                    next()
-                }
-                ' ', '\t', '\r' -> next()
-                else -> break
+        while (more()) when (peek()) {
+            '\n' -> {
+                line++
+                col = 0
+                next()
             }
+            ' ', '\t', '\r' -> next()
+            else -> break
         }
         ignore()
     }
-
-    private fun scanIdent() { while (more() && isIdent(peek())) next() }
 
     fun tokenize(): List<Token> {
         while (more()) {
@@ -180,10 +170,8 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                 ']' -> emit(RBRACK)
                 '(' -> emit(LPAREN)
                 ')' -> emit(RPAREN)
-
                 ',' -> emit(COMMA)
                 ':' -> emit(COLON)
-
                 '+' -> emit(ADD)
                 '-' -> emit(SUB)
                 '*' -> when {
@@ -192,7 +180,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                 }
                 '/' -> when {
                     accept('/') -> {
-                        while(more() && peek() != '\n') next()
+                        acceptWhile { it != '\n' }
                         ignore()
                     }
                     accept('*') -> {
@@ -204,15 +192,13 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                                 else -> if(next() == '\n') line++
                             }
                         }
-                        assert(depth == 0)
+                        assert(depth == 0) // TODO: error reporting
                         ignore()
                     }
                     else -> emit(DIV)
                 }
                 '%' -> emit(MOD)
-
                 '~' -> emit(BIT_NOT)
-
                 '&' -> when {
                     accept('&') -> emit(AND)
                     else -> emit(BIT_AND)
@@ -242,9 +228,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     accept('=') -> emit(NE)
                     else -> emit(NOT)
                 }
-
                 '?' -> emit(POS)
-
                 '"' -> {
                     val start = pos
                     val col = col
@@ -270,6 +254,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                         }
                     }
 
+                    // TODO: error reporting
                     if (!accept('"')) throw LexException("Unclosed string")
 
                     val end = pos - 1
@@ -278,12 +263,12 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
 
                 else -> when {
                     isLetter(c) || c == '_' -> {
-                        scanIdent()
+                        acceptWhile(::isIdent)
                         if(accept(':')) emit(LABEL, source.substring(start, pos - 1))
                         else emit(IDENT)
                     }
                     c == '.' -> {
-                        scanIdent()
+                        acceptWhile(::isIdent)
                         emit(DIRECTIVE, source.substring(start + 1, pos))
                     }
                     isDigit(c) -> {
@@ -291,7 +276,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                             accept('x') -> acceptRun("0123456789abcdefABCDEF")
                             accept('b') -> acceptRun("01")
                             else -> unexpected(peek().toString())
-                        } else while (more() && isDigit(peek())) next()
+                        } else acceptWhile(::isDigit)
                         emit(INT, current())
                     }
                     else -> unexpected(c.toString())
@@ -334,7 +319,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
         var last = 0
         (span.start..span.end).forEach { i ->
             if (source[i] != '\n') {
-                val curr = indexToLine(i)!!
+                val curr = indexToLine(i)
                 if (last != curr) {
                     val line = getLine(i)
                     result += line

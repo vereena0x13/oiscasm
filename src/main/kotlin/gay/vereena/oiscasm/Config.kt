@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm
+package gay.vereena.oiscasm
 
 import java.io.*
 
@@ -19,12 +19,14 @@ data class DebugConfig(
 
 @Serializable
 data class Config(
-    var bitWidth: Int,
+    val signed: Boolean,
+    val bitWidth: Int,
     val debug: DebugConfig
 )
 
 
 fun defaultConfig() = Config(
+    signed = false,
     bitWidth = 16,
     debug = DebugConfig(
         printParsedAst = false,

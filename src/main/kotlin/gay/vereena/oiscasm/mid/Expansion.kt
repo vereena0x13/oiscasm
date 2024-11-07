@@ -1,9 +1,9 @@
-package gay.vereena.sicoasm.mid
+package gay.vereena.oiscasm.mid
 
-import gay.vereena.sicoasm.*
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.front.*
-import gay.vereena.sicoasm.back.*
+import gay.vereena.oiscasm.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.front.*
+import gay.vereena.oiscasm.back.*
 
 
 data class MacroExpanded(val macro: MacroST, val call: MacroCallST, val result: Node) : Notification

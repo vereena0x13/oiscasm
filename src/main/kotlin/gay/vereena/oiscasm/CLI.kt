@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm
+package gay.vereena.oiscasm
 
 import java.io.*
 
@@ -7,7 +7,7 @@ import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.*
 
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.util.*
 
 
 private class CLI : NoOpCliktCommand() {

@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.util
+package gay.vereena.oiscasm.util
 
 import java.io.*
 
@@ -41,21 +41,20 @@ fun applyBitWidth(x: Int, bitWidth: Int) = when(bitWidth) {
 }
 
 
-fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) {
-    val dout = DataOutputStream(FileOutputStream(outFile))
+fun writeOutput(outFile: File, xs: IntArray, bitWidth: Int) = with(DataOutputStream(FileOutputStream(outFile))) {
     xs.forEach {
         // NOTE TODO: this is not needed, right? -- waiting for the assert to fail... ig...
         val x = applyBitWidth(it, bitWidth)
         assert(x == it)
         if(bitWidth == 32) {
-            dout.writeByte((x shr 24) and 0xFF)
-            dout.writeByte((x shr 16) and 0xFF)
+            writeByte((x shr 24) and 0xFF)
+            writeByte((x shr 16) and 0xFF)
         }
-        if(bitWidth >= 16) dout.writeByte((x shr 8) and 0xFF)
-        dout.writeByte(x and 0xFF)
+        if(bitWidth >= 16) writeByte((x shr 8) and 0xFF)
+        writeByte(x and 0xFF)
     }
-    dout.flush()
-    dout.close()
+    flush()
+    close()
 }
 
 

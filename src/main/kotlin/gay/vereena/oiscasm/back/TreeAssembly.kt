@@ -1,10 +1,10 @@
-package gay.vereena.sicoasm.back
+package gay.vereena.oiscasm.back
 
-import gay.vereena.sicoasm.config
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.front.*
-import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.config
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.front.*
+import gay.vereena.oiscasm.mid.*
+import gay.vereena.oiscasm.util.*
 
 
 class TreeAssembled(val code: IntArray) : Notification

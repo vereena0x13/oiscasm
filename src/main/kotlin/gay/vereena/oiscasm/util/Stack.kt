@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.util
+package gay.vereena.oiscasm.util
 
 import java.lang.IllegalStateException
 

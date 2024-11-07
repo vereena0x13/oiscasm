@@ -1,7 +1,7 @@
-package gay.vereena.sicoasm
+package gay.vereena.oiscasm
 
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.util.*
 
 
 class WithConfig(val config: Config) : ExtensionContext.AbstractElement(Key) {

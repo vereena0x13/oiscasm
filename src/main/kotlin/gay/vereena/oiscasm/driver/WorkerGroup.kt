@@ -1,6 +1,6 @@
-package gay.vereena.sicoasm.driver
+package gay.vereena.oiscasm.driver
 
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.util.*
 
 
 class WorkerGroup(val onGroupComplete: (Driver) -> Unit) : WorkerCompletion() {

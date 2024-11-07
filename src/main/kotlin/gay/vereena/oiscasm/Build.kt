@@ -1,12 +1,12 @@
-package gay.vereena.sicoasm
+package gay.vereena.oiscasm
 
 import java.io.*
 
 import kotlin.system.*
 
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.front.*
-import gay.vereena.sicoasm.back.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.front.*
+import gay.vereena.oiscasm.back.*
 
 
 fun build(inFile: File, cfg: Config, writeOutFile: (IntArray) -> Unit) {

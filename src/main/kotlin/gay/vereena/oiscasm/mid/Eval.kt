@@ -1,10 +1,10 @@
-package gay.vereena.sicoasm.mid
+package gay.vereena.oiscasm.mid
 
 import kotlin.math.*
 
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.front.*
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.front.*
+import gay.vereena.oiscasm.util.*
 
 
 sealed class Value {

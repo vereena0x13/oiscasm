@@ -3,8 +3,8 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.20'
 }
 
-group = 'gay.inara.vereena'
-version = '1.0'
+group = 'gay.vereena'
+version = '0.1.0'
 
 repositories {
     mavenCentral()

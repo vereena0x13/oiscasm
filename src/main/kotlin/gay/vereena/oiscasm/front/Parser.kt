@@ -1,12 +1,12 @@
-package gay.vereena.sicoasm.front
+package gay.vereena.oiscasm.front
 
 import java.io.*
 
-import gay.vereena.sicoasm.*
-import gay.vereena.sicoasm.driver.*
-import gay.vereena.sicoasm.front.TokenType.*
-import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.*
+import gay.vereena.oiscasm.driver.*
+import gay.vereena.oiscasm.front.TokenType.*
+import gay.vereena.oiscasm.mid.*
+import gay.vereena.oiscasm.util.*
 
 
 class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
@@ -17,8 +17,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private var index: Int = 0
     private var reportErrors: Boolean = true
 
-
     private var currentScope = Scope()
+
 
     private fun <T> pushScope(action: (Scope) -> T): T {
         currentScope = Scope(currentScope)
@@ -27,16 +27,10 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return result
     }
 
-    private fun current(): Token = tokens[index]
-
-    private fun prev(): Token {
-        index--
-        return current()
-    }
-
-    private fun next() = current().also { index++ }
-
-    private fun more(): Boolean = index < tokens.size
+    private fun current()   = tokens[index]
+    private fun prev()      = tokens[--index]
+    private fun next()      = tokens[index++]
+    private fun more()      = index < tokens.size
 
     private fun accept(vararg valid: TokenType): Boolean {
         if (!more()) return false
@@ -62,7 +56,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
             } else {
                 ""
             }
-            Throwable().printStackTrace() // NOTE: remove for non-debug
+            Throwable().printStackTrace() // NOTE TODO: remove for non-debug
             scope.reportFatal(lexer.formatError("Unexpected token: '${t.value}' (${t.type})$es", t), true)
         } else {
             throw ParseException()
@@ -75,19 +69,11 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun acceptDirective(value: String) = accept(DIRECTIVE) && current().value == value
+    private fun acceptDirectiveNext(value: String) = if(acceptDirective(value)) { next(); true } else false
 
-    private fun acceptDirectiveNext(value: String): Boolean {
-        if(acceptDirective(value)) {
-            next()
-            return true
-        }
-        return false
-    }
-
-    private fun expectDirectiveNext(value: String): Token {
-        val t = expectNext(DIRECTIVE)
-        if (t.value != value) unexpected(expected = value)
-        return t
+    private fun expectDirectiveNext(value: String) = expectNext(DIRECTIVE).let {
+        if (it.value != value) unexpected(expected = value)
+        it
     }
 
     // NOTE TODO: This is not reentrant!
@@ -116,7 +102,6 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun parseIdent() = IdentST(expectNext(IDENT).value)
-
     private fun parseString() = StringST(expectNext(STRING).value)
 
     private fun parseBlank(): BlankST {
@@ -142,10 +127,10 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     private fun parsePower() = parseBinary(::parseAtom, POW)
 
     private fun parseUnaryOp() = when {
-        accept(SUB) -> UnaryOP.NEG
+        accept(SUB)     -> UnaryOP.NEG
         accept(BIT_NOT) -> UnaryOP.BIT_NOT
-        accept(NOT) -> UnaryOP.NOT
-        else -> ice()
+        accept(NOT)     -> UnaryOP.NOT
+        else            -> ice()
     }
 
     private fun parseUnary(): ExprST {
@@ -165,26 +150,26 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
     }
 
     private fun parseBinaryOp() = when {
-        accept(ADD) -> BinaryOP.ADD
-        accept(SUB) -> BinaryOP.SUB
-        accept(MUL) -> BinaryOP.MUL
-        accept(DIV) -> BinaryOP.DIV
-        accept(MOD) -> BinaryOP.MOD
-        accept(POW) -> BinaryOP.POW
+        accept(ADD)     -> BinaryOP.ADD
+        accept(SUB)     -> BinaryOP.SUB
+        accept(MUL)     -> BinaryOP.MUL
+        accept(DIV)     -> BinaryOP.DIV
+        accept(MOD)     -> BinaryOP.MOD
+        accept(POW)     -> BinaryOP.POW
         accept(BIT_AND) -> BinaryOP.BIT_AND
-        accept(BIT_OR) -> BinaryOP.BIT_OR
+        accept(BIT_OR)  -> BinaryOP.BIT_OR
         accept(BIT_XOR) -> BinaryOP.BIT_XOR
-        accept(SHL) -> BinaryOP.SHL
-        accept(SHR) -> BinaryOP.SHR
-        accept(EQ) -> BinaryOP.EQ
-        accept(NE) -> BinaryOP.NE
-        accept(LT) -> BinaryOP.LT
-        accept(GT) -> BinaryOP.GT
-        accept(LTE) -> BinaryOP.LTE
-        accept(GTE) -> BinaryOP.GTE
-        accept(AND) -> BinaryOP.AND
-        accept(OR) -> BinaryOP.OR
-        else -> ice()
+        accept(SHL)     -> BinaryOP.SHL
+        accept(SHR)     -> BinaryOP.SHR
+        accept(EQ)      -> BinaryOP.EQ
+        accept(NE)      -> BinaryOP.NE
+        accept(LT)      -> BinaryOP.LT
+        accept(GT)      -> BinaryOP.GT
+        accept(LTE)     -> BinaryOP.LTE
+        accept(GTE)     -> BinaryOP.GTE
+        accept(AND)     -> BinaryOP.AND
+        accept(OR)      -> BinaryOP.OR
+        else            -> ice()
     }
 
     private fun parseBinary(next: () -> ExprST, vararg types: TokenType): ExprST {
@@ -218,12 +203,7 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return xs
     }
 
-    private fun parseBlock(): BlockST {
-        val (xs, scope) = pushScope {
-            Pair(parseBlockRaw(), currentScope)
-        }
-        return BlockST(xs, scope)
-    }
+    private fun parseBlock() = pushScope { BlockST(parseBlockRaw(), currentScope) }
 
     private fun parseDefine(): DefineST {
         expectDirectiveNext("define")
@@ -295,8 +275,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return IfST(cond, then, otherwise)
     }
 
-    private fun parseIf() = parseIfLike("if")
-    private fun parseIfBlank() = parseIfLike("ifblank", { BlankST(parseExpr()) })
+    private fun parseIf()       = parseIfLike("if")
+    private fun parseIfBlank()  = parseIfLike("ifblank", { BlankST(parseExpr()) })
     private fun parseIfnBlank() = parseIfLike("ifnblank", { UnaryST(UnaryOP.NOT, BlankST(parseExpr())) })
 
     // TODO: think of a name for this
@@ -316,15 +296,15 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         }
 
         return when {
-            accept(LABEL) -> LabelST(expectNext(LABEL).value)
-            accept(LBRACE) -> parseBlock()
-            acceptDirective("define") -> parseDefine()
-            acceptDirective("repeat") -> parseRepeat()
-            acceptDirective("res") -> parseRes()
-            acceptDirective("if") -> parseIf()
-            acceptDirective("ifblank") -> parseIfBlank()
+            accept(LABEL)               -> LabelST(expectNext(LABEL).value)
+            accept(LBRACE)              -> parseBlock()
+            acceptDirective("define")   -> parseDefine()
+            acceptDirective("repeat")   -> parseRepeat()
+            acceptDirective("res")      -> parseRes()
+            acceptDirective("if")       -> parseIf()
+            acceptDirective("ifblank")  -> parseIfBlank()
             acceptDirective("ifnblank") -> parseIfnBlank()
-            else -> parseExpr()
+            else                        -> parseExpr()
         }
     }
 
@@ -332,9 +312,9 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         val includes = mutableListOf<IncludeST>()
         val body = mutableListOf<Node>()
         while (more()) when {
-            acceptDirective("include") -> includes += parseInclude()
-            acceptDirective("macro") -> body += parseMacro()
-            else -> body += parse2()
+            acceptDirective("include")  -> includes += parseInclude()
+            acceptDirective("macro")    -> body += parseMacro()
+            else                        -> body += parse2()
         }
         return FileST(lexer, includes, body, currentScope)
     }

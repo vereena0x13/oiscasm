@@ -1,7 +1,7 @@
-package gay.vereena.sicoasm.driver
+package gay.vereena.oiscasm.driver
 
-import gay.vereena.sicoasm.util.ExtensionContext
-import gay.vereena.sicoasm.util.with
+import gay.vereena.oiscasm.util.ExtensionContext
+import gay.vereena.oiscasm.util.with
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 

@@ -1,6 +1,6 @@
-package gay.vereena.sicoasm
+package gay.vereena.oiscasm
 
-import gay.vereena.sicoasm.util.formatIntTable
+import gay.vereena.oiscasm.util.formatIntTable
 import java.nio.file.*
 import kotlin.io.path.*
 

@@ -1,9 +1,9 @@
-package gay.vereena.sicoasm.driver
+package gay.vereena.oiscasm.driver
 
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 
-import gay.vereena.sicoasm.util.*
+import gay.vereena.oiscasm.util.*
 
 
 interface Notification

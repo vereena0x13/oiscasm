@@ -1,7 +1,7 @@
-package gay.vereena.sicoasm.front
+package gay.vereena.oiscasm.front
 
-import gay.vereena.sicoasm.mid.*
-import gay.vereena.sicoasm.back.*
+import gay.vereena.oiscasm.mid.*
+import gay.vereena.oiscasm.back.*
 
 
 sealed class Node

@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.util
+package gay.vereena.oiscasm.util
 
 import com.github.ajalt.mordant.rendering.TextColors.*
 import com.github.ajalt.mordant.rendering.TextStyles.*

@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.back
+package gay.vereena.oiscasm.back
 
 data class Label(val id: Int, var addr: Int? = null)
 

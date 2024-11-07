@@ -1,4 +1,4 @@
-package gay.vereena.sicoasm.util
+package gay.vereena.oiscasm.util
 
 sealed class Either<A, B> {
     fun swap(): Either<B, A> = when (this) {

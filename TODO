@@ -4,7 +4,7 @@
     - linking
         - .cfg config file for linking
     - rename to oiscasm
-        - we could use this for not only SICO, but SUBLEQ or others too
+        - we could use this for not only oisc, but SUBLEQ or others too
             - would need (optional) negative number support for SUBLEQ
     - .ident, etc.
         - to allow generating labels
