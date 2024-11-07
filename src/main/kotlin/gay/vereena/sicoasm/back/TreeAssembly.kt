@@ -110,7 +110,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
             println("c: " + code.joinToString(" ") { it.toString().padStart(maxLen) })
             println()
         } else {
-            println(code.joinToString(", "))
+            println(formatIntTable(code, 16))
             println()
         }
     }

@@ -19,3 +19,7 @@
           .repeat is run.
           this is a trivial case; it can obviously become much
           more complex, with many layers of indirection.
+    - fix the places where we're creating extra List<T>s by calling,
+      for example, `filter` followed by `map`, or whatever -- we
+      should be calling `asSequence` first to avoid the extra
+      creation of intermediary lists

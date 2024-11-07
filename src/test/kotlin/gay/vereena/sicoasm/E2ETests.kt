@@ -18,9 +18,9 @@ class E2ETests : FunSpec({
     Path("src/test/resources/e2e")
         .listDirectoryEntries()
         .filter { it.extension != "out" }
-        .forEach { it ->
+        .forEach {
             test(it.nameWithoutExtension) {
-                build(it.toFile(), defaultConfig()) { code: IntArray ->
+                build(it.toFile(), defaultConfig()) { code ->
                     val expected = readExpected(it.resolveSibling(it.nameWithoutExtension + ".out"))
 
                     fun errorString() = with(StringBuilder()) {
