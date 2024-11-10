@@ -8,6 +8,13 @@ version = '0.1.0'
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/vereena0x13/koffee")
+        credentials {
+            username = "vereena0x13"
+            password = "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"
+        }
+    }
 }
 
 dependencies {

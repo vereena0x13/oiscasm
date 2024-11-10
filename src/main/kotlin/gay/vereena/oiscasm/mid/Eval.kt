@@ -121,5 +121,6 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
             val value = if(n.value is IdentST) scope[n.value.value]?.value else n.value
             BoolValue(value == null || value is EmptyExprST)
         }
+        is MacroST -> TODO()
     }
 }

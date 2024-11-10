@@ -1,3 +1,4 @@
+/*
 .macro jump(addr) {
             t0 t0 addr
 }
@@ -39,8 +40,21 @@ loop:       sble(-1, text)
 restart:    set(loop+1, tstart)
             set(left, len)
             jump(loop)
+*/
 
 
+.macro foo {
+    1 2 ?
+}
 
+
+.macro bar(x) {
+    5
+    x()
+    5
+}
+
+
+bar(foo)
 
 

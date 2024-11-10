@@ -2,7 +2,7 @@ signed = false
 bitWidth = 16
 
 [debug]
-    printParsedAst = false
-    printScopedAst = false
+    printParsedAst = true
+    printScopedAst = true
     printExpandedAst = true
     printAssembledAst = true

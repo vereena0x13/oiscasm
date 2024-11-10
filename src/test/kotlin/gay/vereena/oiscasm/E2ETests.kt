@@ -1,10 +1,13 @@
 package gay.vereena.oiscasm
 
-import gay.vereena.oiscasm.util.formatIntTable
 import java.nio.file.*
+
 import kotlin.io.path.*
 
 import io.kotest.core.spec.style.FunSpec
+
+import gay.vereena.oiscasm.util.*
+
 
 
 val SPLIT_SPACE_REGEX = "\\s+".toRegex()
