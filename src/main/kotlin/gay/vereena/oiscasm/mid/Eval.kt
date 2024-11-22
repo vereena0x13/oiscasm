@@ -86,7 +86,7 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
                 BinaryOP.ADD -> Binary()
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> IntValue(l.value + r.value) }
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> StringValue(l.value + r.value) }
-                    .fold({ it }, { ice() })
+                    .fold(::id) { ice() }
                 BinaryOP.SUB -> IntValue(left.checkInt() - right.checkInt())
                 BinaryOP.MUL -> IntValue(left.checkInt() * right.checkInt())
                 BinaryOP.DIV -> IntValue(left.checkInt() / right.checkInt())
@@ -101,12 +101,12 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> BoolValue(l.value == r.value) }
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> BoolValue(l.value == r.value) }
                     .binary<BoolValue, BoolValue>(left, right) { l, r, _ -> BoolValue(l.value == r.value) }
-                    .fold({ it }, { ice() })
+                    .fold(::id) { ice() }
                 BinaryOP.NE -> Binary()
                     .binary<IntValue, IntValue>(left, right) { l, r, _ -> BoolValue(l.value != r.value) }
                     .binary<StringValue, StringValue>(left, right) { l, r, _ -> BoolValue(l.value != r.value) }
                     .binary<BoolValue, BoolValue>(left, right) { l, r, _ -> BoolValue(l.value != r.value) }
-                    .fold({ it }, { ice() })
+                    .fold(::id) { ice() }
                 BinaryOP.LT -> BoolValue(left.checkInt() < right.checkInt())
                 BinaryOP.GT -> BoolValue(left.checkInt() > right.checkInt())
                 BinaryOP.LTE -> BoolValue(left.checkInt() <= right.checkInt())
@@ -119,7 +119,7 @@ suspend fun WorkerScope.eval(n: ExprST, ctx: EvalContext?): Value = with(WithSco
         is ParenST -> eval(n.value, ctx)
         is BlankST -> {
             val value = if(n.value is IdentST) scope[n.value.value]?.value else n.value
-            BoolValue(value == null || value is EmptyExprST)
+            BoolValue(value == null || value.empty())
         }
         is MacroST -> TODO()
     }

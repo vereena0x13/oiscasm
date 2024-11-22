@@ -204,7 +204,7 @@ class Lexer(private val scope: WorkerScope, private val file: String, private va
                     else -> emit(BIT_AND)
                 }
                 '|' -> when {
-                    accept('}') -> emit(OR)
+                    accept('|') -> emit(OR)
                     else -> emit(BIT_OR)
                 }
                 '^' -> emit(BIT_XOR)

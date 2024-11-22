@@ -16,6 +16,8 @@
 
 .macro sble(a, b, c) {
             a b
+            .ifblank a .error "sble requires at least two arguments"
+            .ifblank b .error "sble requires at least two arguments"
             .ifnblank c c .else ?+1
 }
 
@@ -43,6 +45,20 @@ restart:    set(loop+1, tstart)
 */
 
 
+
+
+.macro sble(a, b, c) {
+            .if .blank(a) || .blank(b)  .error "sble requires at least two arguments"
+            a b
+            .ifnblank c c .else ?+1
+}
+
+
+sble(0)
+
+
+
+/*
 .macro foo {
     1 2 ?
 }
@@ -56,5 +72,8 @@ restart:    set(loop+1, tstart)
 
 
 bar(foo)
+*/
+
+
 
 

@@ -46,7 +46,7 @@ fun expansion(ast: FileST) = worker(WorkerName("expansion") + WithScopes(ast.sco
             return withScope(Scope(scope)) {
                 args.zip(macro.params).forEach { (value, name) -> scope[name] = visit(value) }
                 labels = findLabels(macro)
-                BlockST(macro.body.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), scope).also { labels = null }
+                BlockST(macro.body.asFlow().map(::visit).filterNot(Node::empty).toList(), scope).also { labels = null }
             }.also { notifyOf(n, MacroExpanded(macro, n, it)) }
         }
 

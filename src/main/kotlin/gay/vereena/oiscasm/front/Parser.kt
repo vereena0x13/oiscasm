@@ -205,6 +205,16 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
 
     private fun parseBlock() = pushScope { BlockST(parseBlockRaw(), currentScope) }
 
+    private fun parseError(): ErrorST {
+        expectDirectiveNext("error")
+        return ErrorST(parseString())
+    }
+
+    private fun parseInfo(): InfoST {
+        expectDirectiveNext("info")
+        return InfoST(parseString())
+    }
+
     private fun parseDefine(): DefineST {
         expectDirectiveNext("define")
         val name = parseIdent()
@@ -298,6 +308,8 @@ class Parser(private val scope: WorkerScope, private val lexer: Lexer) {
         return when {
             accept(LABEL)               -> LabelST(expectNext(LABEL).value)
             accept(LBRACE)              -> parseBlock()
+            acceptDirective("error")    -> parseError()
+            acceptDirective("info")     -> parseInfo()
             acceptDirective("define")   -> parseDefine()
             acceptDirective("repeat")   -> parseRepeat()
             acceptDirective("res")      -> parseRes()

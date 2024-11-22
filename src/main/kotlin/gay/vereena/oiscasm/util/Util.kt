@@ -12,6 +12,9 @@ import com.github.ajalt.mordant.rendering.TextColors.*
 val TERMINAL = Terminal()
 
 
+fun <T> id(x: T) = x
+
+
 fun ice(x: Any? = null): Nothing = panic(("INTERNAL COMPILER ERROR" + if (x == null) "" else ": $x"))
 
 fun panic(msg: String? = null): Nothing {

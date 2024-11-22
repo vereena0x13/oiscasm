@@ -1,12 +1,10 @@
     - more E2E tests
-    - flesh out the bitWidth functionality
-    - segments
+    - bitWidth support -- exists as a stub currently
+    - negative number support -- exists as a stub currently
     - linking
         - .cfg config file for linking
-    - rename to oiscasm
-        - we could use this for not only oisc, but SUBLEQ or others too
-            - would need (optional) negative number support for SUBLEQ
-    - .ident, etc.
+        - segments
+    - .ident, .sprintf, etc.
         - to allow generating labels
     - detection and reporting of circular dependencies
         - for example, the following code:
@@ -19,7 +17,9 @@
           .repeat is run.
           this is a trivial case; it can obviously become much
           more complex, with many layers of indirection.
-    - fix the places where we're creating extra List<T>s by calling,
-      for example, `filter` followed by `map`, or whatever -- we
-      should be calling `asSequence` first to avoid the extra
-      creation of intermediary lists
+    - get some performance data regarding all the places where we've
+      opted to use `asFlow()`
+        - the idea was to avoid constantly allocating new lists; seems
+            reasonable, but the Flows do all sorts of unholy coroutine
+            shit so idk if it's actually better in practice.
+            and, don't just look at speed, look at memory too

@@ -96,7 +96,7 @@ fun bindNames(ast: FileST) = worker(WorkerName("scoping") + WithScopes(ast.scope
         override suspend fun visitMacroCall(n: MacroCallST) = n
         override suspend fun visitRepeat(n: RepeatST) = n
 
-        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.asFlow().map { visit(it) }.filter { it !is EmptyST && it !is EmptyExprST }.toList(), scope)
+        override suspend fun visitFile(n: FileST) = FileST(n.lexer, n.includes, n.body.asFlow().map(::visit).filterNot(Node::empty).toList(), scope)
     }
 
     val scopedAst = nameBinder.visitFile(ast)

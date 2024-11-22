@@ -21,7 +21,7 @@ suspend fun WorkerScope.waitOn(value: Any, notif: KClass<out Notification>, orEl
         val roe = {
             if (orElse == null) {
                 val sts = st.joinToString("\n") { x -> "    $x" }
-                reportError("${(boldRed)("error:")} Worker dependency never resolved; waiting on $value for $notif\n$sts")
+                reportError("Worker dependency never resolved; waiting on $value for $notif\n$sts")
             } else {
                 orElse.invoke()
             }
@@ -35,6 +35,8 @@ fun WorkerScope.notifyOf(value: Any, notif: Notification) = withExt(WithDriver) 
 inline fun <reified T: Notification> WorkerScope.onNotify(crossinline it: (Any, T) -> Unit) = withExt(WithDriver) { driver.onNotify(it) }
 
 fun <T> WorkerScope.reportError(e: T) = withExt(WithDriver) { driver.reportError(e) }
+
+fun <T> WorkerScope.reportInfo(x: T) = withExt(WithDriver) { driver.reportInfo(x) }
 
 fun <T> WorkerScope.reportFatal(e: T, stop: Boolean = false): Nothing = withExt(WithDriver) {
     reportError(e)
@@ -105,8 +107,12 @@ class Driver(private val exts: ExtensionContext = ExtensionContext.Empty) {
 
     fun <T> reportError(e: T) {
         errors++
-        TERMINAL.println(e)
+        TERMINAL.println("${(boldRed)("error")}: $e")
         TERMINAL.println()
+    }
+
+    fun <T> reportInfo(x: T) {
+        TERMINAL.println("${(boldBlue)("info")}: $x")
     }
 
     fun run(): Boolean {

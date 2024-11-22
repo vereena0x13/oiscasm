@@ -59,8 +59,16 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
 
         override suspend fun visitBlock(n: BlockST) = withScope(n.scope) {
             pushLabels()
-            BlockST(n.values.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), scope)
+            BlockST(n.values.asFlow().map(::visit).filterNot(Node::empty).toList(), scope)
                 .also { popLabels()}
+        }
+
+        override suspend fun visitError(n: ErrorST) = n.also {
+            reportFatal(n.message.value) // TODO
+        }
+
+        override suspend fun visitInfo(n: InfoST) = n.also {
+            reportInfo(n.message.value) // TODO
         }
 
         override suspend fun visitDefine(n: DefineST) = EmptyST.also {
@@ -71,7 +79,7 @@ fun assembleTree(ast: FileST) = worker(WorkerName("assembly") + WithScopes(ast.s
         override suspend fun visitFile(n: FileST): FileST {
             n.body.asFlow().filterIsInstance<LabelST>().collect { labels[it.value] = asm.label() }
 
-            val f = FileST(n.lexer, n.includes, n.body.asFlow().map { visit(it) }.filter { it !is EmptyST }.toList(), n.scope)
+            val f = FileST(n.lexer, n.includes, n.body.asFlow().map(::visit).filterNot(Node::empty).toList(), n.scope)
 
             val replacer = object : ASTAdapter {
                 override suspend fun visitDeferred(n: DeferredST): ExprST {

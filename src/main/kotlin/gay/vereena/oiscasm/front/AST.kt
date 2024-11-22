@@ -11,6 +11,9 @@ sealed class ExprST : Node()
 data object EmptyExprST : ExprST()
 
 
+fun Node.empty() = this is EmptyST || this is EmptyExprST
+
+
 data class DeferredST(val pos: Int, val expr: ExprST, val labels: Map<String, Label>) : ExprST() {
     companion object {
         const val MAGIC_NUMBER = 0xD3F3553D.toInt()
@@ -65,6 +68,8 @@ data class MacroST(val name: IdentST, val params: List<String>, val body: List<N
 data class IfST(val cond: ExprST, val then: Node, val otherwise: Node? = null): Node()
 data class BlockST(val values: List<Node>, val scope: Scope) : Node()
 data class MacroCallST(val name: IdentST, val args: List<ExprST>) : Node()
+data class ErrorST(val message: StringST): Node()
+data class InfoST(val message: StringST): Node()
 data class DefineST(val name: IdentST, val value: ExprST) : Node()
 data class RepeatST(val count: ExprST, val iteratorName: String?, val body: Node) : Node()
 data class IncludeST(val path: String) : Node()
@@ -90,6 +95,8 @@ interface ASTAdapter {
         is IfST         -> visitIf(n)
         is BlockST      -> visitBlock(n)
         is MacroCallST  -> visitMacroCall(n)
+        is ErrorST      -> visitError(n)
+        is InfoST       -> visitInfo(n)
         is DefineST     -> visitDefine(n)
         is MacroST      -> visitMacro(n)
         is RepeatST     -> visitRepeat(n)
@@ -131,6 +138,8 @@ interface ASTAdapter {
     suspend fun visitIf(n: IfST): Node                  = IfST(visitExpr(n.cond), visit(n.then), if(n.otherwise == null) null else visit(n.otherwise))
     suspend fun visitMacroCall(n: MacroCallST): Node    = MacroCallST(n.name, n.args.map { visitExpr(it) })
     suspend fun visitBlock(n: BlockST): Node            = BlockST(n.values.map { visit(it) }, n.scope)
+    suspend fun visitError(n: ErrorST): Node            = n
+    suspend fun visitInfo(n: InfoST): Node              = n
     suspend fun visitDefine(n: DefineST): Node          = DefineST(n.name, visitExpr(n.value))
     suspend fun visitRepeat(n: RepeatST): Node          = RepeatST(visitExpr(n.count), n.iteratorName, visit(n.body))
     suspend fun visitInclude(n: IncludeST): Node        = n
@@ -245,6 +254,14 @@ fun astToString(n: Node): String {
                     visit(it)
                 }
                 level--
+            }
+            is ErrorST -> {
+                emit("error: ")
+                visit(n.message)
+            }
+            is InfoST -> {
+                emit("info: ")
+                visit(n.message)
             }
             is DefineST -> {
                 emitln("define(${n.name}):")
